@@ -2,21 +2,26 @@ cmake_minimum_required(VERSION 3.29.3)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(portAudioTest)
-project(portAudioTestExample)
+set(CMAKE_CXX_STANDARD 23)
 
-add_executable(portAudioTest src/main.cpp)
-add_executable(portAudioTestExample src/main_from_example.cpp)
+project(fft_test)
+project(audio_test)
+project(wav_test)
 
-set(BUILD_SHARED_LIBS ON)
+add_executable(fft_test src/main.cpp)
+add_executable(audio_test src/main_from_example.cpp)
+add_executable(wav_test src/main_wav.cpp)
+
+set(BUILD_SHARED_LIBS OFF)
 
 set(PA_USE_JACK OFF)
 set(PA_USE_ALSA ON)
 
 add_subdirectory(vendor/portaudio)
 
-target_link_libraries(portAudioTest portaudio)
-target_link_libraries(portAudioTestExample portaudio)
+target_link_libraries(fft_test PortAudio)
+target_link_libraries(audio_test PortAudio)
+target_link_libraries(wav_test PortAudio)
 # target_link_libraries(midi ${OPENGL_opengl_LIBRARY} glad glfw)
 
 #file(COPY src/shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
