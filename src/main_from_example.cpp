@@ -41,7 +41,7 @@
  * requested that these non-binding requests be included along with the
  * license above.
  */
-#include "portaudio.h"
+#include <portaudio.h>
 #include <cmath>
 #include <fcntl.h>
 #include <math.h>
