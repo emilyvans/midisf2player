@@ -52,7 +52,7 @@
 #define NUM_SECONDS (15)
 // #define SAMPLE_RATE (44100)
 #define SAMPLE_RATE (48000)
-#define FRAMES_PER_BUFFER (256)
+#define FRAMES_PER_BUFFER (0)
 
 #ifndef M_PI
 #define M_PI (3.14159265)
@@ -166,10 +166,12 @@ private:
 
 		for (i = 0; i < framesPerBuffer; i++) {
 			double deltaFrame = (double)prevSteps / (double)SAMPLE_RATE;
-			float f1 = SinWave(130.813, deltaFrame);
-			float f2 = SinWave(164.814, deltaFrame);
-			float f3 = SinWave(195.998, deltaFrame);
-			float combination = f1 + f2 + f3;
+			// float f1 = SinWave(130.813, deltaFrame);
+			// float f2 = SinWave(164.814, deltaFrame);
+			// float f3 = SinWave(195.998, deltaFrame);
+			float f1 = SinWave(220, deltaFrame);
+			float f3 = SinWave(660, deltaFrame);
+			float combination = f1 + f3;
 			*out++ = combination; /* left */
 			*out++ = combination; /* right */
 			left_phase += 1;
@@ -185,7 +187,7 @@ private:
 	}
 
 	float SinWave(float freq, double delta) {
-		return sin(freq * 2.0 * M_PI * delta);
+		return sin(freq * 2.0 * M_PI * delta) * 0.2;
 	}
 
 	/* This routine will be called by the PortAudio engine when audio is needed.
