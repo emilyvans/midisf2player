@@ -14,14 +14,11 @@ add_executable(wav_test src/main_wav.cpp)
 
 set(BUILD_SHARED_LIBS OFF)
 
-set(PA_USE_JACK OFF)
-set(PA_USE_ALSA ON)
-
 add_subdirectory(vendor/portaudio)
 
-target_link_libraries(fft_test PortAudio)
-target_link_libraries(audio_test PortAudio)
-target_link_libraries(wav_test PortAudio)
+target_link_libraries(fft_test portaudio)
+target_link_libraries(audio_test portaudio)
+target_link_libraries(wav_test portaudio)
 # target_link_libraries(midi ${OPENGL_opengl_LIBRARY} glad glfw)
 
 #file(COPY src/shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)

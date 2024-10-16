@@ -59,15 +59,7 @@ struct WAVE_FILE{
 	uint16_t block_align;		// data block size
 	uint16_t bits_per_sample;	// the bits per sample
 	uint32_t data_length;
-	union {
-		std::vector<int8_t> int8data;
-		std::vector<int16_t> int16data;
-		std::vector<int32_t> int32data;
-		std::vector<uint8_t> uint8data;
-		std::vector<uint16_t> uint16data;
-		std::vector<uint32_t> uint32data;
-		std::vector<uint8_t> bytes;
-	};
+	std::vector<float> samples;
 };
 
 std::optional<WAVE_FILE> read_wave_file(const char* file_path) {
