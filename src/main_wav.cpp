@@ -1,8 +1,15 @@
+#include <bitset>
+#include <cmath>
+#include <complex>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <portaudio.h>
+#include <stdint.h>
 #include <vector>
-#include <bitset>
+
+std::vector<std::complex<double>> fft(std::vector<std::complex<double>> input);
+std::vector<std::complex<double>> fft(std::vector<float> input);
 
 uint8_t read1(std::ifstream &file) {
 	char result[1];
@@ -45,14 +52,17 @@ uint32_t read4(std::ifstream &file) {
 	return byte4 << 24 | byte3 << 16 | byte2 << 8 | byte1;
 }
 
-uint8_t *readn_little_endian(std::ifstream &file, int n) {
-	char *result = new char[](n);
+std::vector<uint8_t> readn_little_endian(std::ifstream &file, int n) {
+	char *result = new char[n];
 	file.read(result, n);
 
-	uint8_t *result_swap = new uint8_t[](n);
+	std::vector<uint8_t> result_swap;
+	result_swap.resize(n);
 
-	for (int i = sizeof(result), i_swap = 0; i > 0; i--, i_swap++) {
+	for (int i = n - 1, i_swap = 0; i >= 0;) {
 		result_swap[i_swap] = result[i];
+		i--;
+		i_swap++;
 	}
 
 	return result_swap;
@@ -69,7 +79,7 @@ struct WAVE_FILE {
 	uint16_t block_align;       // data block size
 	uint16_t bits_per_sample;   // the bits per sample
 	uint32_t data_length;
-	std::vector<double> samples;
+	std::vector<float> samples;
 };
 
 std::optional<WAVE_FILE> read_wave_file(const char *file_path) {
@@ -94,7 +104,12 @@ std::optional<WAVE_FILE> read_wave_file(const char *file_path) {
 	wave.block_align = read2(file);
 	wave.bits_per_sample = read2(file);
 
-	read4(file); // "data"
+	uint chunk_type = read4(file);
+	while (chunk_type != 0x61746164) { // "data" but reversed
+		uint32_t length = read4(file);
+		file.seekg((uint32_t)file.tellg() + length);
+		chunk_type = read4(file);
+	}
 	wave.data_length = read4(file);
 	int sample_increment = ceilf(wave.bits_per_sample / (float)8);
 	int64_t max = 255;
@@ -105,42 +120,132 @@ std::optional<WAVE_FILE> read_wave_file(const char *file_path) {
 		min = -1 * (range / 2);
 	}
 	std::cout << "min: " << min << " max: " << max << "\n";
-	for (int i = 0; i < sample_increment * 2; i += sample_increment) {
-		uint8_t *raw_sample_bytes = readn_little_endian(file, sample_increment);
+
+	uint64_t bitmask = ~(uint64_t)(pow(2, wave.bits_per_sample) - 1);
+
+	for (int i = 0; i < wave.data_length; i += sample_increment) {
+		std::vector<uint8_t> raw_sample_bytes =
+				readn_little_endian(file, sample_increment);
 		uint64_t raw_sample = 0;
 		int64_t sample_int = 0;
 		float sample = 0;
 		for (int i = 0; i < sample_increment; i++) {
 			raw_sample = raw_sample << 8 | raw_sample_bytes[i];
 		}
-		bool isNegative = false;
-		
-		std::cout << std::bitset<16>(raw_sample) << " ";
 
-		if ((raw_sample & ((uint64_t)0b1 << sample_increment * 8 - 1)) >= 1) {
-			isNegative = true;
-		}
+		if (wave.bits_per_sample > 8) {
+			uint64_t sign_bit = (uint64_t)0b1 << (sample_increment * 8 - 1);
 
-		std::cout << " " << (isNegative ? "true" : "false") << "\n"; 
-		raw_sample >>= (sample_increment * 8) - wave.bits_per_sample;
-
-		if (isNegative) {
-			sample_int = ~raw_sample - min;
+			if ((raw_sample & sign_bit) >= 1) {
+				sample_int = raw_sample | bitmask;
+			} else {
+				sample_int = raw_sample;
+			}
 		} else {
 			sample_int = raw_sample;
 		}
 
 		sample = (float)sample_int / (float)max;
+		// sample = sample_int;
 
-		std::cout << "bytes: " << std::hex << (uint16_t *)raw_sample
-							<< " raw: " << (uint64_t)raw_sample << " : " << std::dec
-							<< (uint64_t)raw_sample << " : act: " << sample
-							<< " bin: " << std::bitset<16>(raw_sample) << " : "
-							<< wave.bits_per_sample << " : " << isNegative 
-							<< "\n";
+		wave.samples.push_back(sample);
+
+		//		std::cout << "bytes: " << std::hex << (uint16_t *)raw_sample
+		//							<< ", raw(hex): " << (uint64_t)raw_sample
+		//							<< ", raw(dec): " << std::dec << (uint64_t)raw_sample
+		//							<< ", act: " << sample << "\n";
 	}
 
 	return std::make_optional(wave);
+}
+
+uint32_t progress = 0;
+
+std::vector<float> samples;
+
+int paCallback(const void *inputBuffer, void *outputBuffer,
+               unsigned long framesPerBuffer,
+               const PaStreamCallbackTimeInfo *timeInfo,
+               PaStreamCallbackFlags statusFlags, void *userData) {
+	WAVE_FILE *wave = (WAVE_FILE *)userData;
+	float *out = (float *)outputBuffer;
+
+	for (int i = 0; i < framesPerBuffer; i++) {
+		*out++ = samples[progress];
+		*out++ = samples[progress];
+		// std::cout << wave->samples[progress] << "\n";
+		progress += 1;
+		if (progress >= samples.size()) {
+			progress = 0;
+		}
+	}
+
+	return paContinue;
+}
+
+std::vector<float> fftrange(std::vector<float> values, int start, int end) {
+
+	std::vector<float> new_vec;
+
+	if (values.size() < end) {
+		std::cout << "error: went over max index";
+		return new_vec;
+	}
+
+	for (int i = start; i <= end; i++) {
+		new_vec.push_back(values[i]);
+	}
+
+	std::vector<std::complex<double>> fft_results = fft(new_vec);
+
+	std::vector<double> results;
+
+	double max_result = 0;
+
+	for (std::complex<double> result_complex : fft_results) {
+		double result = std::abs(result_complex);
+		if (result > max_result) {
+			max_result = result;
+		}
+		results.push_back(result);
+	}
+
+	for (int i = 0; i < results.size(); i++) {
+		results[i] = results[i] / max_result;
+	}
+
+	for (int i = 0; i < results.size() / 2; i++) {
+		if (results[i] < 0.5)
+			continue;
+		std::cout << i << ";" << results[i] << "\n";
+	}
+	return new_vec;
+}
+
+std::vector<float> resampleAudio(const std::vector<float> &input,
+                                 double sourceRate, double targetRate) {
+	double resampleFactor = targetRate / sourceRate;
+	int newLength = static_cast<int>(input.size() * resampleFactor);
+	std::vector<float> output(newLength);
+
+	// Perform linear interpolation
+	for (int i = 0; i < newLength; ++i) {
+		// Find the corresponding input sample position (floating point)
+		double inputPos = i / resampleFactor;
+		int inputIndex = static_cast<int>(inputPos);
+
+		if (inputIndex >= input.size() - 1) {
+			// Handle edge case where inputPos is near the end of the input
+			output[i] = input.back();
+		} else {
+			// Linear interpolation between two nearest samples
+			double fraction = inputPos - inputIndex;
+			output[i] =
+					(1 - fraction) * input[inputIndex] + fraction * input[inputIndex + 1];
+		}
+	}
+
+	return output;
 }
 
 int main() {
@@ -153,5 +258,106 @@ int main() {
 	}
 	WAVE_FILE wave = wave_opt.value();
 
-	std::cin.get();
+	std::cout << "sample rate: " << wave.samples_per_sec << "\n";
+
+	uint64_t sample_count =
+			((wave.samples.size() - 1) / wave.samples_per_sec) * 48000;
+
+	uint64_t increment = (wave.samples.size() - 1) * 0.1;
+
+	for (int i = 0; i < wave.samples.size() - 1; i += increment + 1) {
+		std::cout << "samples " << i << " to " << i + increment << "\n";
+		fftrange(wave.samples, i, i + increment);
+	}
+
+	samples = resampleAudio(wave.samples, wave.samples_per_sec, 48000);
+
+	// return 0;
+
+	Pa_Initialize();
+	PaStream *stream;
+	PaStreamParameters outputParameters;
+
+	outputParameters.device = Pa_GetDefaultOutputDevice();
+	if (outputParameters.device == paNoDevice) {
+		return -1;
+	}
+
+	const PaDeviceInfo *pInfo = Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice());
+	if (pInfo != 0) {
+		printf("Output device name: '%s'\r", pInfo->name);
+	}
+
+	outputParameters.channelCount = 2;         /* stereo output */
+	outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
+	outputParameters.suggestedLatency =
+			Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+	outputParameters.hostApiSpecificStreamInfo = NULL;
+
+	PaError err = Pa_OpenStream(&stream, NULL, /* no input */
+	                            &outputParameters, 48000, 0,
+	                            0, /* we won't output out of range samples
+	                                          so don't bother clipping them */
+	                            paCallback, (void *)&wave);
+
+	if (err != paNoError) {
+		Pa_CloseStream(stream);
+		stream = 0;
+
+		std::cout << "\nearly close: " << Pa_GetErrorText(err) << "\n";
+		return -1;
+	}
+
+	PaError errs = Pa_StartStream(stream);
+	if (errs == paNoError) {
+		std::cout << "playing\n";
+		Pa_Sleep(10000);
+		Pa_StopStream(stream);
+	}
+	Pa_CloseStream(stream);
+	Pa_Terminate();
+}
+
+std::vector<std::complex<double>> fft(std::vector<float> input) {
+	std::vector<std::complex<double>> vector;
+	for (float value : input) {
+		vector.push_back(std::complex(value));
+	}
+	return fft(vector);
+}
+
+std::vector<std::complex<double>> fft(std::vector<std::complex<double>> input) {
+	int N = input.size();
+	int K = N;
+
+	std::vector<std::complex<double>> output;
+	std::vector<std::complex<double>> even;
+	std::vector<std::complex<double>> odd;
+
+	if (K <= 1) {
+		return input;
+	}
+
+	output.reserve(N);
+	even.reserve(N / 2);
+	odd.reserve(N / 2);
+
+	for (int i = 0; i < N; i++) {
+		output.push_back(NULL);
+	}
+
+	for (int i = 0; 2 * i < N; i++) {
+		even.push_back(input[2 * i]);
+		odd.push_back(input[2 * i + 1]);
+	}
+
+	std::vector<std::complex<double>> even_output = fft(even);
+	std::vector<std::complex<double>> odd_output = fft(odd);
+	for (int k = 0; k < K / 2; k++) {
+		std::complex<double> t = std::polar(1.0, 2 * M_PI * k / N) * odd_output[k];
+		output[k] = even_output[k] + t;
+		output[N / 2 + k] = even_output[k] - t;
+	}
+
+	return output;
 }
