@@ -171,8 +171,8 @@ int paCallback(const void *inputBuffer, void *outputBuffer,
 	float *out = (float *)outputBuffer;
 
 	for (int i = 0; i < framesPerBuffer; i++) {
-		*out++ = samples[progress];
-		*out++ = samples[progress];
+		*out++ = samples[progress] * 0.5;
+		*out++ = samples[progress] * 0.5;
 		// std::cout << wave->samples[progress] << "\n";
 		progress += 1;
 		if (progress >= samples.size()) {
@@ -240,6 +240,8 @@ std::vector<float> resampleAudio(const std::vector<float> &input,
 		} else {
 			// Linear interpolation between two nearest samples
 			double fraction = inputPos - inputIndex;
+			// a+(b-a)*t
+			// (1-t) * a + t * b
 			output[i] =
 					(1 - fraction) * input[inputIndex] + fraction * input[inputIndex + 1];
 		}
@@ -285,7 +287,8 @@ int main() {
 
 	const PaDeviceInfo *pInfo = Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice());
 	if (pInfo != 0) {
-		printf("Output device name: '%s'\r", pInfo->name);
+		printf("Output device name: '%s' samplerate: %f\n", pInfo->name,
+		       pInfo->defaultSampleRate);
 	}
 
 	outputParameters.channelCount = 2;         /* stereo output */
