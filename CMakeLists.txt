@@ -16,9 +16,9 @@ set(BUILD_SHARED_LIBS OFF)
 
 add_subdirectory(vendor/portaudio)
 
-target_link_libraries(fft_test portaudio)
-target_link_libraries(audio_test portaudio)
-target_link_libraries(wav_test portaudio)
+target_link_libraries(fft_test portaudio_static)
+target_link_libraries(audio_test portaudio_static)
+target_link_libraries(wav_test portaudio_static)
 # target_link_libraries(midi ${OPENGL_opengl_LIBRARY} glad glfw)
 
 #file(COPY src/shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)

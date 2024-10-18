@@ -8,6 +8,10 @@
 #include <stdint.h>
 #include <vector>
 
+#ifndef M_PI
+#define M_PI (3.14159265358979323846)
+#endif
+
 std::vector<std::complex<double>> fft(std::vector<std::complex<double>> input);
 std::vector<std::complex<double>> fft(std::vector<float> input);
 
@@ -52,18 +56,22 @@ uint32_t read4(std::ifstream &file) {
 	return byte4 << 24 | byte3 << 16 | byte2 << 8 | byte1;
 }
 
-std::vector<uint8_t> readn_little_endian(std::ifstream &file, int n) {
+std::vector<uint8_t> readn_samples(std::ifstream &file, int n, int sample_size) {
 	char *result = new char[n];
 	file.read(result, n);
 
 	std::vector<uint8_t> result_swap;
 	result_swap.resize(n);
 
-	for (int i = n - 1, i_swap = 0; i >= 0;) {
-		result_swap[i_swap] = result[i];
-		i--;
-		i_swap++;
+	for (int sample = 0; sample < n; sample+=sample_size) {
+		for (int i = sample_size-1, i_swap = 0; i > 0;) {
+			result_swap[sample + i_swap] = result[sample + i];
+			i--;
+			i_swap++;
+		}
 	}
+
+	delete[] result;
 
 	return result_swap;
 }
@@ -104,7 +112,7 @@ std::optional<WAVE_FILE> read_wave_file(const char *file_path) {
 	wave.block_align = read2(file);
 	wave.bits_per_sample = read2(file);
 
-	uint chunk_type = read4(file);
+	uint32_t chunk_type = read4(file);
 	while (chunk_type != 0x61746164) { // "data" but reversed
 		uint32_t length = read4(file);
 		file.seekg((uint32_t)file.tellg() + length);
@@ -123,15 +131,15 @@ std::optional<WAVE_FILE> read_wave_file(const char *file_path) {
 
 	uint64_t bitmask = ~(uint64_t)(pow(2, wave.bits_per_sample) - 1);
 
+	std::vector<uint8_t> samples = readn_samples(file, wave.data_length, sample_increment);
+
 	for (int i = 0; i < wave.data_length; i += sample_increment) {
-		std::vector<uint8_t> raw_sample_bytes =
-				readn_little_endian(file, sample_increment);
 		uint64_t raw_sample = 0;
 		int64_t sample_int = 0;
 		float sample = 0;
-		for (int i = 0; i < sample_increment; i++) {
-			raw_sample = raw_sample << 8 | raw_sample_bytes[i];
-		}
+		for (int n = 0; n < sample_increment; n++) {
+			raw_sample = raw_sample << 8 | samples[i + n];
+		} 
 
 		if (wave.bits_per_sample > 8) {
 			uint64_t sign_bit = (uint64_t)0b1 << (sample_increment * 8 - 1);
@@ -172,9 +180,9 @@ int paCallback(const void *inputBuffer, void *outputBuffer,
 
 	for (int i = 0; i < framesPerBuffer; i++) {
 		*out++ = samples[progress] * 0.5;
-		*out++ = samples[progress] * 0.5;
+		*out++ = samples[progress+1] * 0.5;
 		// std::cout << wave->samples[progress] << "\n";
-		progress += 1;
+		progress += wave->channels;
 		if (progress >= samples.size()) {
 			progress = 0;
 		}
@@ -223,27 +231,35 @@ std::vector<float> fftrange(std::vector<float> values, int start, int end) {
 }
 
 std::vector<float> resampleAudio(const std::vector<float> &input,
-                                 double sourceRate, double targetRate) {
+                                 double sourceRate, double targetRate,
+                                 int channels) {
 	double resampleFactor = targetRate / sourceRate;
-	int newLength = static_cast<int>(input.size() * resampleFactor);
+	int newLength =
+			static_cast<int>((input.size() / channels) * resampleFactor) * channels;
 	std::vector<float> output(newLength);
 
-	// Perform linear interpolation
-	for (int i = 0; i < newLength; ++i) {
-		// Find the corresponding input sample position (floating point)
-		double inputPos = i / resampleFactor;
-		int inputIndex = static_cast<int>(inputPos);
+	// Process each channel separately
+	for (int ch = 0; ch < channels; ++ch) {
+		for (int i = 0; i < newLength / channels; ++i) {
+			// Find the corresponding input sample position (floating point) for this
+			// channel
+			double inputPos = i / resampleFactor;
+			int inputIndex = static_cast<int>(inputPos);
 
-		if (inputIndex >= input.size() - 1) {
-			// Handle edge case where inputPos is near the end of the input
-			output[i] = input.back();
-		} else {
-			// Linear interpolation between two nearest samples
-			double fraction = inputPos - inputIndex;
-			// a+(b-a)*t
-			// (1-t) * a + t * b
-			output[i] =
-					(1 - fraction) * input[inputIndex] + fraction * input[inputIndex + 1];
+			// Index of the current sample for the current channel
+			int inputOffset = inputIndex * channels + ch;
+			int outputOffset = i * channels + ch;
+
+			if (inputOffset >= input.size() - channels) {
+				// Handle edge case where inputPos is near the end of the input for this
+				// channel
+				output[outputOffset] = input[input.size() - channels + ch];
+			} else {
+				// Linear interpolation between two nearest samples for this channel
+				double fraction = inputPos - inputIndex;
+				output[outputOffset] = (1 - fraction) * input[inputOffset] +
+				                       fraction * input[inputOffset + channels];
+			}
 		}
 	}
 
@@ -251,6 +267,7 @@ std::vector<float> resampleAudio(const std::vector<float> &input,
 }
 
 int main() {
+	int sample_rate = 48000;
 	std::optional<WAVE_FILE> wave_opt = read_wave_file("test.wav");
 	if (!wave_opt.has_value()) {
 		std::cout
@@ -267,14 +284,17 @@ int main() {
 
 	uint64_t increment = (wave.samples.size() - 1) * 0.1;
 
-	for (int i = 0; i < wave.samples.size() - 1; i += increment + 1) {
-		std::cout << "samples " << i << " to " << i + increment << "\n";
-		fftrange(wave.samples, i, i + increment);
-	}
+//	for (int i = 0; i < wave.samples.size() - 1; i += increment + 1) {
+//		std::cout << "samples " << i << " to " << i + increment << "\n";
+//		fftrange(wave.samples, i, i + increment);
+//	}
 
-	samples = resampleAudio(wave.samples, wave.samples_per_sec, 48000);
+	samples = resampleAudio(wave.samples, wave.samples_per_sec, sample_rate,
+	                        wave.channels);
 
-	// return 0;
+	float seconds = (samples.size()/2.0f)/sample_rate;
+
+	//return 0;
 
 	Pa_Initialize();
 	PaStream *stream;
@@ -298,7 +318,7 @@ int main() {
 	outputParameters.hostApiSpecificStreamInfo = NULL;
 
 	PaError err = Pa_OpenStream(&stream, NULL, /* no input */
-	                            &outputParameters, 48000, 0,
+	                            &outputParameters, sample_rate, 0,
 	                            0, /* we won't output out of range samples
 	                                          so don't bother clipping them */
 	                            paCallback, (void *)&wave);
@@ -313,8 +333,9 @@ int main() {
 
 	PaError errs = Pa_StartStream(stream);
 	if (errs == paNoError) {
-		std::cout << "playing\n";
-		Pa_Sleep(10000);
+		std::cout << "playing seconds: "
+							<< seconds << "\n";
+		Pa_Sleep(seconds * 1000);
 		Pa_StopStream(stream);
 	}
 	Pa_CloseStream(stream);
