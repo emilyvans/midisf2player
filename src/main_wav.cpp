@@ -200,6 +200,10 @@ std::vector<float> fftrange(std::vector<float> values, int start, int end) {
 		return new_vec;
 	}
 
+	if (start > -1) {
+		return new_vec;
+	}
+
 	for (int i = start; i <= end; i++) {
 		new_vec.push_back(values[i]);
 	}
