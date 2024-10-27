@@ -41,10 +41,10 @@
  * requested that these non-binding requests be included along with the
  * license above.
  */
-#include <portaudio.h>
 #include <cmath>
 #include <fcntl.h>
 #include <math.h>
+#include <portaudio.h>
 #include <pulse/timeval.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -63,7 +63,7 @@
 #define TABLE_SIZE (FREQ)
 
 class Sine {
-public:
+  public:
 	Sine() : stream(0), left_phase(0), right_phase(0) {
 		FILE *f = fopen("sin.csv", "w");
 		/* initialise sinusoidal wavetable */
@@ -92,18 +92,18 @@ public:
 
 		outputParameters.channelCount = 2; /* stereo output */
 		outputParameters.sampleFormat =
-				paFloat32; /* 32 bit floating point output */
+		    paFloat32; /* 32 bit floating point output */
 		outputParameters.suggestedLatency =
-				Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+		    Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
 		outputParameters.hostApiSpecificStreamInfo = NULL;
 
 		PaError err = Pa_OpenStream(
-				&stream, NULL, /* no input */
-				&outputParameters, SAMPLE_RATE, FRAMES_PER_BUFFER,
-				paClipOff, /* we won't output out of range samples so don't bother
-		                    clipping them */
-				&Sine::paCallback, this /* Using 'this' for userData so we can cast
-		                                 to Sine* in paCallback method */
+		    &stream, NULL, /* no input */
+		    &outputParameters, SAMPLE_RATE, FRAMES_PER_BUFFER,
+		    paClipOff, /* we won't output out of range samples so don't
+		    bother clipping them */
+		    &Sine::paCallback, this /* Using 'this' for userData so we
+		                 can cast to Sine* in paCallback method */
 		);
 
 		if (err != paNoError) {
@@ -150,9 +150,9 @@ public:
 		return (err == paNoError);
 	}
 
-private:
-	/* The instance callback, where we have access to every method/variable in
-	 * object of class Sine */
+  private:
+	/* The instance callback, where we have access to every method/variable
+	 * in object of class Sine */
 	int paCallbackMethod(const void *inputBuffer, void *outputBuffer,
 	                     unsigned long framesPerBuffer,
 	                     const PaStreamCallbackTimeInfo *timeInfo,
@@ -177,7 +177,8 @@ private:
 			left_phase += 1;
 			if (left_phase >= TABLE_SIZE)
 				left_phase -= TABLE_SIZE;
-			right_phase += 2; /* higher pitch so we can distinguish left and right. */
+			right_phase += 2; /* higher pitch so we can distinguish
+			                     left and right. */
 			if (right_phase >= TABLE_SIZE)
 				right_phase -= TABLE_SIZE;
 			prevSteps++;
@@ -190,20 +191,22 @@ private:
 		return sin(freq * 2.0 * M_PI * delta) * 0.2;
 	}
 
-	/* This routine will be called by the PortAudio engine when audio is needed.
-	** It may called at interrupt level on some machines so don't do anything
-	** that could mess up the system like calling malloc() or free().
-	*/
+	/* This routine will be called by the PortAudio engine when audio is
+	 *needed.
+	 ** It may called at interrupt level on some machines so don't do
+	 *anything
+	 ** that could mess up the system like calling malloc() or free().
+	 */
 	static int paCallback(const void *inputBuffer, void *outputBuffer,
 	                      unsigned long framesPerBuffer,
 	                      const PaStreamCallbackTimeInfo *timeInfo,
 	                      PaStreamCallbackFlags statusFlags, void *userData) {
-		/* Here we cast userData to Sine* type so we can call the instance
-		   method paCallbackMethod, we can do that since we called Pa_OpenStream
-		   with 'this' for userData */
+		/* Here we cast userData to Sine* type so we can call the
+		   instance method paCallbackMethod, we can do that since we
+		   called Pa_OpenStream with 'this' for userData */
 		return ((Sine *)userData)
-		    ->paCallbackMethod(inputBuffer, outputBuffer, framesPerBuffer, timeInfo,
-		                       statusFlags);
+		    ->paCallbackMethod(inputBuffer, outputBuffer, framesPerBuffer,
+		                       timeInfo, statusFlags);
 	}
 
 	void paStreamFinishedMethod() { printf("Stream Completed: %s\n", message); }
@@ -224,7 +227,7 @@ private:
 };
 
 class ScopedPaHandler {
-public:
+  public:
 	ScopedPaHandler() : _result(Pa_Initialize()) {}
 	~ScopedPaHandler() {
 		if (_result == paNoError) {
@@ -234,7 +237,7 @@ public:
 
 	PaError result() const { return _result; }
 
-private:
+  private:
 	PaError _result;
 };
 
