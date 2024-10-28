@@ -1,10 +1,33 @@
 #ifndef SF2_FILE_HPP_
 #define SF2_FILE_HPP_
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cwchar>
 #include <string>
 #include <vector>
+
+struct sf_ranges_type {
+	uint8_t low;
+	uint8_t high;
+};
+
+union sf_gen_amount_type {
+	sf_ranges_type ranges;
+	int16_t sh_amount;
+	uint16_t w_amount;
+};
+
+enum sf_sample_link {
+	mono_sample = 1,
+	right_sample = 2,
+	left_sample = 4,
+	linked_sample = 8,
+	rom_mono_sample = 0x8001,
+	rom_right_sample = 0x8002,
+	rom_left_sample = 0x8004,
+	rom_linked_sample = 0x8008,
+};
 
 struct sf_preset_header { // sfPresetHeader
 	char preset_name[20];
@@ -21,13 +44,48 @@ struct sf_preset_zone { // sfPresetBag
 	uint16_t ModNdx;
 };
 
-//struct sf_mod_list { // sfModList
-//	SF_modulator src_oper;
-//	SF_generator dest_oper;
-//	uint16_t mod_amount;
-//	SF_modulator amt_src_oper;
-//	SF_transform trans_oper;
-//};
+typedef uint32_t sf_modulator;
+typedef uint32_t sf_generator;
+typedef uint32_t sf_transform;
+
+struct sf_mod_list { // sfModList
+	sf_modulator src_oper;
+	sf_generator dest_oper;
+	int16_t mod_amount;
+	sf_modulator amt_src_oper;
+	sf_transform trans_oper;
+};
+
+struct sf_gen_list {
+	sf_generator oper;
+	sf_gen_amount_type amount;
+};
+
+struct sf_inst {
+	char inst_name[20];
+	uint16_t inst_bag_ndx;
+};
+
+struct sf_inst_bag {
+	uint16_t inst_gen_ndx;
+	uint16_t inst_mod_ndx;
+};
+
+typedef sf_mod_list sf_inst_mod_list;
+typedef sf_gen_list sf_inst_gen_list;
+
+struct sf_sample {
+	char sample_name[20];
+	uint32_t start;
+	uint32_t end;
+	uint32_t start_loop;
+	uint32_t end_loop;
+	uint32_t sample_rate;
+	uint8_t original_key;
+	char correction;
+	uint16_t sample_link;
+	sf_sample_link sample_type;
+};
 
 class SF2_FILE {
   public:
@@ -35,9 +93,6 @@ class SF2_FILE {
 
   private:
   public:
-  private:
-	std::string file_path;
-	uint32_t file_length;
 	// INFO
 	uint32_t major_version;
 	uint32_t minor_version;
@@ -46,9 +101,14 @@ class SF2_FILE {
 	std::string date_of_creation;
 	std::string tool;
 	// sdta
-	std::vector<uint8_t> samples;
+	std::vector<float> samples;
 	// pdta
 	std::vector<sf_preset_header> preset_headers;
+	std::vector<sf_sample> sample_headers;
+
+  private:
+	std::string file_path;
+	uint32_t file_length;
 };
 
 #endif // SF2_FILE_HPP

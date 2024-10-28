@@ -82,10 +82,22 @@ SF2_FILE::SF2_FILE(std::string file_name) {
 	read4(); // smpl
 	uint32_t smpl_length = read4();
 
-	samples = readn_forward(smpl_length);
+	std::vector<uint8_t> raw_samples = readn_forward(smpl_length);
+	int range = pow(2, 16);
+	float max = range / 2.0 - 1.0;
+
+	for (int i = 0; i < raw_samples.size(); i += 2) {
+		uint8_t byte1 = raw_samples[i];
+		uint8_t byte2 = raw_samples[i + 1];
+
+		int16_t sample = byte2 << 8 | byte1;
+
+		samples.push_back(sample / max);
+	}
+
 	std::ofstream audio("audio.bin", std::ios::binary);
 
-	for (uint8_t smpl : samples) {
+	for (uint8_t smpl : raw_samples) {
 		audio << smpl;
 	}
 
@@ -111,7 +123,58 @@ SF2_FILE::SF2_FILE(std::string file_name) {
 		preset_headers.push_back(preset_header);
 	}
 
-	std::cout << std::hex << read4() << "\n";
+	read4();                        // pbag
+	uint32_t pbag_length = read4(); // pbag chunk length
+	// for (int i = 0; i < pbag_length; i +=4){
+	//
+	// }
+	cursor += pbag_length;
+
+	read4();                        // pmod
+	uint32_t pmod_length = read4(); // pmod chunk length
+	cursor += pmod_length;
+
+	read4();                        // pgen
+	uint32_t pgen_length = read4(); // pgen chunk length
+	cursor += pgen_length;
+
+	read4();                        // inst
+	uint32_t inst_length = read4(); // inst chunk length
+	cursor += inst_length;
+
+	read4();                        // ibag
+	uint32_t ibag_length = read4(); // ibag chunk length
+	cursor += ibag_length;
+
+	read4();                        // imod
+	uint32_t imod_length = read4(); // imod chunk length
+	cursor += imod_length;
+
+	read4();                        // igen
+	uint32_t igen_length = read4(); // igen chunk length
+	cursor += igen_length;
+
+	read4();                        // shdr
+	uint32_t shdr_length = read4(); // shdr chunk length
+
+	for (int i = 0; i < shdr_length; i += 46) {
+		sf_sample sample_header;
+		std::vector<uint8_t> sample_name = readn_forward(20);
+		memcpy(sample_header.sample_name, sample_name.data(), 20);
+		sample_header.start = read4();
+		sample_header.end = read4();
+		sample_header.start_loop = read4();
+		sample_header.end_loop = read4();
+		sample_header.sample_rate = read4();
+		sample_header.original_key = read1();
+		sample_header.correction = read1();
+		sample_header.sample_link = read2();
+		sample_header.sample_type = (sf_sample_link)read2();
+
+		sample_headers.push_back(sample_header);
+	}
+
+	// std::cout << std::hex << read4() << "\n";
 
 	delete[] file_bytes;
 }
