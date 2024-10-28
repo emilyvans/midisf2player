@@ -21,13 +21,13 @@ struct sf_preset_zone { // sfPresetBag
 	uint16_t ModNdx;
 };
 
-struct sf_mod_list { // sfModList
-	SF_modulator src_oper;
-	SF_generator dest_oper;
-	uint16_t mod_amount;
-	SF_modulator amt_src_oper;
-	SF_transform trans_oper;
-};
+//struct sf_mod_list { // sfModList
+//	SF_modulator src_oper;
+//	SF_generator dest_oper;
+//	uint16_t mod_amount;
+//	SF_modulator amt_src_oper;
+//	SF_transform trans_oper;
+//};
 
 class SF2_FILE {
   public:

@@ -8,7 +8,7 @@
 #include <ios>
 #include <iostream>
 #include <iterator>
-#include <strings.h>
+#include <string>
 #include <vector>
 
 uint8_t read8(uint8_t *bytes, uint32_t file_length, uint32_t &cursor);
@@ -21,7 +21,7 @@ std::vector<uint8_t> read_number_forward(uint8_t *in_bytes,
                                          uint32_t count);
 
 SF2_FILE::SF2_FILE(std::string file_name) {
-	std::ifstream file(file_name);
+	std::ifstream file(file_name, std::ios::binary);
 	file.seekg(0, file.end);
 	file_length = file.tellg();
 	file.seekg(0, file.beg);

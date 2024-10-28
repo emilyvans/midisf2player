@@ -444,7 +444,7 @@ int main(int argc, char **argv) {
 	float orig_freq = 51.91;
 	// float new_freq = 25.96;
 	// float new_freq = 103.83;
-	float new_freq = 51.91;
+	float new_freq = 25.96;
 
 	float one_Hz_samplerate = wave.samples_per_sec / new_freq;
 
@@ -534,7 +534,6 @@ int main(int argc, char **argv) {
 
 	PaError errs = Pa_StartStream(stream);
 	if (errs == paNoError) {
-		seconds = 20;
 		std::cout << "playing seconds: " << seconds << "\n";
 		Pa_Sleep(seconds * 1000);
 		Pa_StopStream(stream);
