@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 	float sample_rate;
 	float sample_rate_default = 48000.0;
 	std::cout << "Hello, World!\n";
-	SF2_FILE sf2_file("./MUS_LAST_BOSS.sf2");
+	SF2File sf2_file("./MUS_LAST_BOSS.sf2");
 	sf_sample sample_header = sf2_file.sample_headers[9];
 
 	std::vector<float> pre_samples;

@@ -20,7 +20,7 @@ std::vector<uint8_t> read_number_forward(uint8_t *in_bytes,
                                          uint32_t file_length, uint32_t &cursor,
                                          uint32_t count);
 
-SF2_FILE::SF2_FILE(std::string file_name) {
+SF2File::SF2File(std::string file_name) {
 	std::ifstream file(file_name, std::ios::binary);
 	file.seekg(0, file.end);
 	file_length = file.tellg();

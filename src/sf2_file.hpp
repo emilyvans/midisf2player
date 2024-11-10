@@ -44,9 +44,65 @@ struct sf_preset_zone { // sfPresetBag
 	uint16_t ModNdx;
 };
 
-typedef uint32_t sf_modulator;
-typedef uint32_t sf_generator;
-typedef uint32_t sf_transform;
+typedef uint16_t sf_modulator; // enum
+
+enum class sf_generator : uint16_t {
+	startAddrOffset = 0,
+	endAddrOffset = 1,
+	startloopAddrOffset = 2,
+	endloopAddrOffset = 3,
+	startAddrCoarseOffset = 4,
+	modLfoToPitch = 5,
+	vibLfoToPitch = 6,
+	modEnvToPitch = 7,
+	initialFilterFc = 8,
+	initialFilterQ = 9,
+	modLfoToFilterFc = 10,
+	modEnvToFilterFc = 11,
+	endAddrCoarseOffset = 12,
+	modLfoToVolume = 13,
+	chorusEffectsSend = 15,
+	reverbEffectsSend = 16,
+	pan = 17,
+	delayModLFO = 21,
+	freqModLFO = 22,
+	delayVibLFO = 23,
+	freqVibLFO = 24,
+	delayModEnv = 25,
+	attackModEnv = 26,
+	holdModEnv = 27,
+	decayModEnv = 28,
+	sustainModEnv = 29,
+	releaseModEnv = 30,
+	keynumToModEnvHold = 31,
+	keynumToModEnvDecay = 32,
+	delayVolEnv = 33,
+	attackVolEnv = 34,
+	holdVolEnv = 35,
+	decayVolEnv = 36,
+	sustainVolEnv = 37,
+	releaseVolEnv = 38,
+	keynumToVolEnvHold = 39,
+	keynumToVolEnvDecay = 40,
+	instrument = 41,
+	keyRange = 43,
+	velRange = 44,
+	startloopAddrCoarseOffset = 45,
+	keynum = 46,
+	velocity = 47,
+	initialAttenuation = 48,
+	endloopAddrCoarseOffset = 50,
+	coarseTune = 51,
+	fineTune = 52,
+	sampleID = 53,
+	sampleModes = 54,
+	scaleTuning = 56,
+	exclusiveClass = 57,
+	overridingRootKey = 58,
+	endOper = 60
+};
+
+typedef uint16_t sf_transform; // enum
 
 struct sf_mod_list { // sfModList
 	sf_modulator src_oper;
@@ -87,9 +143,9 @@ struct sf_sample {
 	sf_sample_link sample_type;
 };
 
-class SF2_FILE {
+class SF2File {
   public:
-	SF2_FILE(std::string file_path);
+	SF2File(std::string file_path);
 
   private:
   public:
