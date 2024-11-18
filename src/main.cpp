@@ -1,3 +1,4 @@
+#include "midi_note_freq.hpp"
 #include "sf2_file.hpp"
 #include <cstdint>
 #include <cstring>
@@ -23,8 +24,8 @@ int paCallback(const void *inputBuffer, void *outputBuffer,
 			looped = true;
 			int pre_progress = progress;
 			progress = loop_start + 1;
-			sample = 0.5 * samples[loop_start] + 0.5 * samples[pre_progress];
-
+			// sample = 0.5 * samples[loop_start] + 0.5 * samples[pre_progress];
+			sample = samples[progress];
 		} else {
 			sample = samples[progress];
 		}
@@ -77,7 +78,6 @@ std::vector<float> resampleAudio(const std::vector<float> &input,
 int main(int argc, char **argv) {
 	float sample_rate;
 	float sample_rate_default = 48000.0;
-	std::cout << "Hello, World!\n";
 	SF2File sf2_file("./MUS_LAST_BOSS.sf2");
 	sf_sample sample_header = sf2_file.sample_headers[9];
 
@@ -86,6 +86,14 @@ int main(int argc, char **argv) {
 	for (int i = sample_header.start; i < sample_header.end + 1; i++) {
 		pre_samples.push_back(sf2_file.samples[i]);
 	}
+
+	float origfreq = midi_note_freq[sample_header.original_key];
+	float newfreq = midi_note_freq[120];
+
+	float new_sample_rate = sample_header.sample_rate / newfreq * origfreq;
+
+	pre_samples = resampleAudio(pre_samples, sample_header.sample_rate,
+	                            new_sample_rate, 1);
 
 	Pa_Initialize();
 	PaStream *stream;
@@ -134,16 +142,30 @@ int main(int argc, char **argv) {
 		sample_rate = sample_rate_default;
 	}
 
-	loop_start = (sample_header.start_loop - sample_header.start) / 22050.0 *
-	             sample_rate;
-	loop_end =
-	    (sample_header.end_loop - sample_header.start) / 22050.0 * sample_rate;
+	float loop_point_modifier =
+	    (1 / (float)sample_header.sample_rate * new_sample_rate) /
+	    sample_header.sample_rate * sample_rate;
+
+	loop_start = floorf((sample_header.start_loop - sample_header.start) *
+	                    loop_point_modifier);
+	loop_end = floorf((sample_header.end_loop - sample_header.start) *
+	                  loop_point_modifier);
 
 	std::cout << "sample rate: " << sample_rate << "\n";
 	std::cout << "start-loop: " << loop_start << ", end-loop: " << loop_end
 	          << "\n";
 
 	samples = resampleAudio(pre_samples, 22050, sample_rate, 1);
+
+	std::cout << "final samples count: " << samples.size() << "\n";
+	if (samples.size() + 1 < loop_end) {
+		std::cout << "sample loop end point is bigger than samples amount. "
+		             "differenace: "
+		          << loop_end - samples.size() << "\n";
+		return 1;
+	} else if (samples.size() + 1 == loop_end) {
+		loop_end -= 1;
+	}
 
 	float seconds = 20;
 

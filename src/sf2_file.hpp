@@ -39,7 +39,7 @@ struct sf_preset_header { // sfPresetHeader
 	uint32_t morphology;
 };
 
-struct sf_preset_zone { // sfPresetBag
+struct sf_preset_bag { // sfPresetBag
 	uint16_t GenNdx;
 	uint16_t ModNdx;
 };
@@ -104,7 +104,7 @@ enum class sf_generator : uint16_t {
 
 typedef uint16_t sf_transform; // enum
 
-struct sf_mod_list { // sfModList
+struct sf_preset_mod_list { // sfModList
 	sf_modulator src_oper;
 	sf_generator dest_oper;
 	int16_t mod_amount;
@@ -112,7 +112,7 @@ struct sf_mod_list { // sfModList
 	sf_transform trans_oper;
 };
 
-struct sf_gen_list {
+struct sf_preset_gen_list {
 	sf_generator oper;
 	sf_gen_amount_type amount;
 };
@@ -127,8 +127,8 @@ struct sf_inst_bag {
 	uint16_t inst_mod_ndx;
 };
 
-typedef sf_mod_list sf_inst_mod_list;
-typedef sf_gen_list sf_inst_gen_list;
+typedef sf_preset_mod_list sf_inst_mod_list;
+typedef sf_preset_gen_list sf_inst_gen_list;
 
 struct sf_sample {
 	char sample_name[20];
@@ -160,6 +160,13 @@ class SF2File {
 	std::vector<float> samples;
 	// pdta
 	std::vector<sf_preset_header> preset_headers;
+	std::vector<sf_preset_bag> preset_index_list;
+	std::vector<sf_preset_mod_list> preset_modulator_list;
+	std::vector<sf_preset_gen_list> preset_generate_list;
+	std::vector<sf_inst> instrument_names_indices;
+	std::vector<sf_inst_bag> instument_index_list;
+	std::vector<sf_inst_mod_list> instrument_modulator_list;
+	std::vector<sf_inst_gen_list> instrument_generator_list;
 	std::vector<sf_sample> sample_headers;
 
   private:

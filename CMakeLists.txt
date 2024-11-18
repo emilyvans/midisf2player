@@ -14,6 +14,7 @@ add_executable(fft_test src/main_fft.cpp )
 add_executable(audio_test src/main_from_example.cpp)
 add_executable(wav_test src/main_wav.cpp)
 
+
 set(BUILD_SHARED_LIBS OFF)
 
 add_subdirectory(vendor/portaudio)

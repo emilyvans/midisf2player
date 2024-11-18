@@ -1,18 +1,53 @@
 #include "file.hpp"
 #include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <stacktrace>
 #include <vector>
 
-MyFile::MyFile(std::string file_name, std::ios::openmode mode) {}
+#define panic(message)                                                         \
+	{                                                                          \
+		std::cerr << "PANIC: \"" << message << "\" in " << __FILE__ << ":"     \
+		          << __LINE__ << "\n";                                         \
+		exit(1);                                                               \
+	}
 
-uint8_t MyFile::read8() { return m_file_bytes[m_cursor++]; }
+File::File(std::string file_name, std::ios::openmode mode) {
+	std::ifstream file(file_name, mode);
 
-uint16_t MyFile::read16() {
+	m_cursor = 0;
+	file.seekg(0, file.end);
+	m_file_length = file.tellg();
+	file.seekg(0, file.beg);
+	m_file_bytes = new uint8_t[m_file_length];
+	file.read((char *)m_file_bytes, m_file_length);
+}
+
+File::~File() { delete[] m_file_bytes; }
+
+void File::add_to_cursor(uint32_t number) { m_cursor += number; }
+
+uint8_t File::read8() {
+	if (m_cursor + 1 > m_file_length)
+		panic("hit end of buffer. length: " << m_file_length
+		                                    << ", cursor: " << m_cursor);
+	return m_file_bytes[m_cursor++];
+}
+
+uint16_t File::read16() {
+	if (m_cursor + 2 > m_file_length)
+		panic("hit end of buffer. length: " << m_file_length
+		                                    << ", cursor: " << m_cursor);
 	uint8_t byte1 = m_file_bytes[m_cursor++];
 	uint8_t byte2 = m_file_bytes[m_cursor++];
 	return byte2 << 8 | byte1;
 }
 
-uint32_t MyFile::read32() {
+uint32_t File::read32() {
+	if (m_cursor + 4 > m_file_length)
+		panic("hit end of buffer. length: " << m_file_length
+		                                    << ", cursor: " << m_cursor);
 	uint8_t byte1 = m_file_bytes[m_cursor++];
 	uint8_t byte2 = m_file_bytes[m_cursor++];
 	uint8_t byte3 = m_file_bytes[m_cursor++];
@@ -20,7 +55,10 @@ uint32_t MyFile::read32() {
 	return byte4 << 24 | byte3 << 16 | byte2 << 8 | byte1;
 }
 
-uint64_t MyFile::read64() {
+uint64_t File::read64() {
+	if (m_cursor + 8 > m_file_length)
+		panic("hit end of buffer. length: " << m_file_length
+		                                    << ", cursor: " << m_cursor);
 	uint8_t byte1 = m_file_bytes[m_cursor++];
 	uint8_t byte2 = m_file_bytes[m_cursor++];
 	uint8_t byte3 = m_file_bytes[m_cursor++];
@@ -34,7 +72,10 @@ uint64_t MyFile::read64() {
 	       byte3 << 16 | byte2 << 8 | byte1;
 }
 
-std::vector<uint8_t> MyFile::readn(uint32_t count, bool forward) {
+std::vector<uint8_t> File::readn(uint32_t count, bool forward) {
+	if (m_cursor + count > m_file_length)
+		panic("hit end of buffer. length: " << m_file_length
+		                                    << ", cursor: " << m_cursor);
 	std::vector<uint8_t> bytes;
 
 	if (forward) {

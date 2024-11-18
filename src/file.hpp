@@ -5,11 +5,13 @@
 #include <ios>
 #include <vector>
 
-class MyFile {
+class File {
 
   public:
-	MyFile(std::string file_name,
-	       std::ios::openmode mode = std::ios::in | std::ios::binary);
+	File(std::string file_name,
+	     std::ios::openmode mode = std::ios::in | std::ios::binary);
+	~File();
+	void add_to_cursor(uint32_t number);
 	uint8_t read8();
 	uint16_t read16();
 	uint32_t read32();
