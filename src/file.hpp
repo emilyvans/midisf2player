@@ -12,6 +12,8 @@ class File {
 	     std::ios::openmode mode = std::ios::in | std::ios::binary);
 	~File();
 	void add_to_cursor(uint32_t number);
+	uint32_t get_cursor();
+	void set_cursor(uint32_t cursor);
 	uint8_t read8();
 	uint16_t read16();
 	uint32_t read32();

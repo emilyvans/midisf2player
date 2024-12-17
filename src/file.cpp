@@ -27,6 +27,8 @@ File::File(std::string file_name, std::ios::openmode mode) {
 File::~File() { delete[] m_file_bytes; }
 
 void File::add_to_cursor(uint32_t number) { m_cursor += number; }
+uint32_t File::get_cursor() { return m_cursor; }
+void File::set_cursor(uint32_t cursor) { m_cursor = cursor; }
 
 uint8_t File::read8() {
 	if (m_cursor + 1 > m_file_length)

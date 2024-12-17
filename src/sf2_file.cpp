@@ -200,3 +200,21 @@ SF2File::SF2File(std::string file_name) {
 
 	// std::cout << std::hex << file.read32() << "\n";
 }
+
+void readListChunk(SF2File &sf2_file, File &file) {
+	file.read32();                   // LIST
+	uint32_t length = file.read32(); // LIST length
+	uint32_t end_of_chunk = file.get_cursor() + length;
+	uint32_t type = file.read32();
+
+	switch (type) {
+	case 0x4F64E49: // INFO
+		break;
+	case 0x61746473: // sdta
+		break;
+	case 0x61746470: // pdta
+		break;
+	}
+
+	file.set_cursor(end_of_chunk);
+}

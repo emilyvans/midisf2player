@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 	}
 
 	float origfreq = midi_note_freq[sample_header.original_key];
-	float newfreq = midi_note_freq[120];
+	float newfreq = midi_note_freq[sample_header.original_key - 12];
 
 	float new_sample_rate = sample_header.sample_rate / newfreq * origfreq;
 
