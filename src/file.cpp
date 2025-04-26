@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <stacktrace>
 #include <vector>
 
 #define panic(message)                                                         \
@@ -28,6 +27,7 @@ File::~File() { delete[] m_file_bytes; }
 
 void File::add_to_cursor(uint32_t number) { m_cursor += number; }
 uint32_t File::get_cursor() { return m_cursor; }
+uint32_t File::get_file_length() { return m_file_length; }
 void File::set_cursor(uint32_t cursor) { m_cursor = cursor; }
 
 uint8_t File::read8() {

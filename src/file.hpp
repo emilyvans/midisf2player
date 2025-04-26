@@ -13,6 +13,7 @@ class File {
 	~File();
 	void add_to_cursor(uint32_t number);
 	uint32_t get_cursor();
+	uint32_t get_file_length();
 	void set_cursor(uint32_t cursor);
 	uint8_t read8();
 	uint16_t read16();
