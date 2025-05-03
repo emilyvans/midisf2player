@@ -145,7 +145,7 @@ std::vector<MIDI_EVENT> read_midi_track_events(std::ifstream *file,
 		} break;
 		default: {
 			std::cout << "delta: " << delta_time << ", type: 0x" << std::hex
-			          << (uint)event_type << std::dec << "("
+			          << (uint32_t)event_type << std::dec << "("
 			          << std::bitset<8>(event_type) << ")"
 			          << " loc: 0x" << std::hex << loc << std::dec << "\n";
 			return events; // exits loop

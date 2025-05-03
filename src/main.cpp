@@ -214,7 +214,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 	frames = resampleAudio(frames, sample.sample_rate, sample_rate, 1);
 
 	float volume_envelope = sample.sustainVol;
-	for (uint32_t i = 0; i < size; i++) {
+	for (uint32_t i = 0; i < frames.size(); i++) {
 		float time_ms = (i / sample_rate) * 1000.0f;
 		volume_envelope = sample.sustainVol;
 		if (time_ms < sample.attackVolTime) {
@@ -802,7 +802,7 @@ int main(int argc, char **argv) {
 	midi_file = midi_file_opt.value();
 	float us_per_midiclock = 0;
 	std::vector<Track> tracks;
-	float length;
+	float length = 0;
 
 	for (int i = 0; i < midi_file.tracks.size(); i++) {
 		MIDI_TRACK midi_track = midi_file.tracks[i];
