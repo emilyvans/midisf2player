@@ -9,13 +9,14 @@ project(fft_test)
 project(audio_test)
 project(wav_test)
 
-add_executable(midi_player src/main.cpp src/sf2_file.cpp src/file.cpp)
+add_executable(midi_player src/main.cpp src/sf2_file.cpp src/file.cpp src/midi_file.cpp)
 add_executable(fft_test src/main_fft.cpp )
 add_executable(audio_test src/main_from_example.cpp)
 add_executable(wav_test src/main_wav.cpp)
 
 
 set(BUILD_SHARED_LIBS OFF)
+set(PA_USE_ALSA OFF)
 
 add_subdirectory(vendor/portaudio)
 

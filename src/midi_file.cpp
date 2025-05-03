@@ -1,5 +1,6 @@
 #include "midi_file.hpp"
 #include <bitset>
+#include <cstdint>
 #include <fstream>
 #include <ios>
 #include <iostream>
@@ -34,6 +35,26 @@ uint32_t read_32(std::ifstream *file) {
 	uint8_t byte4 = bytes[3];
 
 	return byte1 << 24 | byte2 << 16 | byte3 << 8 | byte4;
+}
+
+uint32_t read_number_test(std::ifstream *file) {
+	uint32_t number = 0;
+	char byte = 0;
+	bool end = false;
+	file->get(byte);
+
+	while (!end) {
+
+		if ((byte & 0b10000000) > 0) {
+			number = (number) + ((byte & 0b1111111) << 7);
+			file->get(byte);
+		} else {
+			number = (number) + (byte << 7);
+			end = true;
+		}
+	}
+
+	return number + 100000000000;
 }
 
 uint32_t read_number(std::ifstream *file) {
@@ -90,9 +111,12 @@ std::vector<MIDI_EVENT> read_midi_track_events(std::ifstream *file,
 	std::vector<MIDI_EVENT> events;
 
 	while (file->tellg() < end_location) {
+		uint32_t loc = file->tellg();
 		uint32_t delta_time = read_number(file);
 		uint8_t event_type = read_8(file);
 		MIDI_EVENT event;
+		event.type = event_type;
+		event.delta_time = delta_time;
 		switch (event_type) {
 		case 0xF0: {
 			MIDI_SYSEX_EVENT sysex_event;
@@ -120,9 +144,10 @@ std::vector<MIDI_EVENT> read_midi_track_events(std::ifstream *file,
 			event.event = read_midi_midi_event(file, event_type);
 		} break;
 		default: {
-			std::cout << "delta: " << delta_time << ", type:" << std::hex
+			std::cout << "delta: " << delta_time << ", type: 0x" << std::hex
 			          << (uint)event_type << std::dec << "("
-			          << std::bitset<8>(event_type) << ")" << "\n";
+			          << std::bitset<8>(event_type) << ")"
+			          << " loc: 0x" << std::hex << loc << std::dec << "\n";
 			return events; // exits loop
 		}
 		}
