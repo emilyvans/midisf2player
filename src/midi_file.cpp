@@ -5,6 +5,8 @@
 #include <ios>
 #include <iostream>
 
+bool is_seven = false;
+
 uint8_t read_8(std::ifstream *file) {
 	char byte;
 
@@ -148,7 +150,7 @@ std::vector<MIDI_EVENT> read_midi_track_events(std::ifstream *file,
 			          << (uint32_t)event_type << std::dec << "("
 			          << std::bitset<8>(event_type) << ")"
 			          << " loc: 0x" << std::hex << loc << std::dec << "\n";
-			return events; // exits loop
+			// return events; // exits loop
 		}
 		}
 		events.push_back(event);
@@ -184,6 +186,11 @@ std::optional<MIDI_FILE> read_midi_file(const char *filename) {
 	midi_file.tracks.reserve(midi_file.header.ntracks);
 
 	for (uint16_t i = 0; i < midi_file.header.ntracks; i++) {
+		if (i == 7) {
+			is_seven = true;
+		} else {
+			is_seven = false;
+		}
 		MIDI_TRACK track = {};
 		file.read(track.type, 4);
 		track.length = read_32(&file);

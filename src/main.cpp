@@ -16,9 +16,13 @@
 #include <ostream>
 #include <portaudio.h>
 #include <ratio>
+#include <sstream>
 #include <sys/types.h>
 #include <variant>
 #include <vector>
+
+#define PRINT_MIDI_INFO 1
+#define envelope_log 0
 
 uint32_t progress = 0;
 std::vector<float> samples_to_play;
@@ -27,6 +31,7 @@ int loop_start;
 int loop_end;
 std::ofstream info_log_file("log.txt");
 float volume = 0.75;
+bool isFinished = false;
 
 int paCallback(const void *inputBuffer, void *outputBuffer,
                unsigned long framesPerBuffer,
@@ -35,29 +40,22 @@ int paCallback(const void *inputBuffer, void *outputBuffer,
 	float *out = (float *)outputBuffer;
 	for (int i = 0; i < framesPerBuffer; i++) {
 		float sample;
-#if 0
-		if ((!looped && progress == samples.size()) ||
-		    (looped && progress == loop_end)) {
-			looped = true;
-			int pre_progress = progress;
-			progress = loop_start + 1;
-			// sample = 0.5 * samples[loop_start] + 0.5 * samples[pre_progress];
-			sample = samples[progress];
-		} else {
-			sample = samples[progress];
-		}
-#else
 		sample = samples_to_play[progress];
-		// std::cout << "running: " << progress << "/" << samples_to_play.size()
-		//           << "\n";
-#endif
-		*out++ = sample * volume;
-		*out++ = sample * volume;
-		progress++;
-		if (progress >= samples_to_play.size()) {
-			std::cout << "complete\n";
-			return paAbort;
+		if (!isFinished) {
+			*out++ = sample * volume;
+			*out++ = sample * volume;
+			progress++;
+			if (progress >= samples_to_play.size()) {
+				isFinished = true;
+				std::cout << "complete\n";
+			}
+		} else {
+			*out++ = 0;
+			*out++ = 0;
 		}
+	}
+	if (isFinished) {
+		return paComplete;
 	}
 	return paContinue;
 }
@@ -141,10 +139,10 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 
 	Sample sample;
 	bool found = false;
-	std::cout << name << "\n";
+	// std::cout << name << "\n";
 	for (uint32_t i = 0; i < this->samples.size(); i++) {
-		// std::cout << (samples[i].low_key <= note) << "-"
-		//           << (note <= samples[i].high_key) << "\n";
+		// std::cout << (uint32_t)samples[i].low_key << "<" << (uint32_t)note
+		//           << "<" << (uint32_t)samples[i].high_key << "\n";
 		if (this->samples[i].low_key <= note &&
 		    note <= this->samples[i].high_key) {
 			sample = samples[i];
@@ -155,7 +153,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 
 	if (!found) {
 		std::cout << "sample of note " << (uint32_t)note << " not found\n";
-		exit(1);
+		return frames;
 	}
 
 	double origfreq = midi_note_freq[sample.original_key];
@@ -171,9 +169,9 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 
 	uint32_t index = 0;
 	uint32_t size = 0;
-	std::cout << (uint32_t)sample.samplemodes << "\n";
+	// std::cout << (uint32_t)sample.samplemodes << "\n";
 	if (sample.samplemodes == 0 || sample.samplemodes == 2) {
-		std::cout << "noloop\n";
+		// std::cout << "noloop\n";
 		for (uint32_t i = 0; i < frames_needed; i++) {
 			// frames.push_back(sample.samples[index] * volume);
 
@@ -191,7 +189,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 
 		size = frames.size();
 	} else if (sample.samplemodes == 1 || sample.samplemodes == 3) {
-		std::cout << "loop\n";
+		// std::cout << "loop\n";
 		for (uint32_t i = 0; i < frames_needed; i++) {
 			// frames.push_back(sample.samples[index] * volume);
 
@@ -219,43 +217,46 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 		volume_envelope = sample.sustainVol;
 		if (time_ms < sample.attackVolTime) {
 			volume_envelope = time_ms / sample.attackVolTime;
-			// std::cout << time_ms << " ";
-			// std::cout << sample.attackVolTime
-			//           << " attack| vol: " << volume_envelope * 100 << "%\n";
+#if envelope_log
+			std::cout << time_ms << " ";
+			std::cout << sample.attackVolTime
+			          << " attack| vol: " << volume_envelope * 100 << "%\n";
+#endif
 		} else if (time_ms < sample.attackVolTime + sample.holdVolTime) {
 			volume_envelope = 1.0f;
-			// std::cout << time_ms << " ";
-			// std::cout << sample.attackVolTime + sample.holdVolTime
-			//           << " hold| vol: " << volume_envelope * 100 << "%\n";
+#if envelope_log
+			std::cout << time_ms << " ";
+			std::cout << sample.attackVolTime + sample.holdVolTime
+			          << " hold| vol: " << volume_envelope * 100 << "%\n";
+#endif
 		} else if (time_ms < sample.attackVolTime + sample.holdVolTime +
 		                         sample.decayVolTime) {
 			float percentage =
 			    (time_ms - sample.attackVolTime - sample.holdVolTime) /
 			    sample.decayVolTime;
-			// volume_envelope = (sample.sustainVol) * (1 - percentage);
 			volume_envelope = 1 - ((1.0f - sample.sustainVol) * percentage);
-			// std::cout << time_ms << " ";
-			/// std::cout << sample.attackVolTime + sample.holdVolTime +
-			//                 sample.decayVolTime
-			//          << " decay| percent: " << volume_envelope * 100 <<
-			//          "%\n";
+#if envelope_log
+			std::cout << time_ms << " ";
+			std::cout << sample.attackVolTime + sample.holdVolTime +
+			                 sample.decayVolTime
+			          << " decay| percent: " << volume_envelope * 100 << "%\n";
+#endif
 		}
 		frames[i] *= volume_envelope;
 	}
 
 	std::vector<float> release_frames;
 
+	// TODO: need to apply volume_release after resampling to maybe fix too echo
+	// issue
 	if (sample.samplemodes == 1) {
 		for (uint32_t i = 0; i < frames_needed_release; i++) {
 			float sample_value = 0;
-			float volume_release =
-			    volume_envelope -
-			    (volume_envelope * i / (frames_needed_release - 1));
 			if (index < sample.samples.size()) {
 				sample_value = sample.samples[index];
 			}
 
-			release_frames.push_back(sample_value * volume_release * volume);
+			release_frames.push_back(sample_value * volume);
 
 			index += 1;
 			if (index >= sample.loop_end - 1) {
@@ -266,32 +267,26 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 			}
 		}
 	} else if (sample.samplemodes == 3) {
-		std::cout << "release\n";
-		// index = sample.loop_end;
+		// std::cout << "release\n";
+		//  index = sample.loop_end;
 		for (uint32_t i = 0; i < frames_needed_release; i++) {
 			float sample_value = 0;
-			float volume_release =
-			    volume_envelope -
-			    (volume_envelope * i / (frames_needed_release - 1));
 			if (index < sample.samples.size()) {
 				sample_value = sample.samples[index];
 			}
 
-			release_frames.push_back(sample_value * volume_release * volume);
+			release_frames.push_back(sample_value * volume);
 
 			index += 1;
 		}
 	} else {
 		for (uint32_t i = 0; i < frames_needed_release; i++) {
 			float sample_value = 0;
-			float volume_release =
-			    volume_envelope -
-			    (volume_envelope * i / (frames_needed_release - 1));
 			if (index < sample.samples.size()) {
 				sample_value = sample.samples[index];
 			}
 
-			release_frames.push_back(sample_value * volume_release * volume);
+			release_frames.push_back(sample_value * volume);
 
 			index += 1;
 		}
@@ -305,7 +300,13 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 
 	frames.reserve(release_frames.size());
 	for (uint32_t i = 0; i < release_frames.size(); i++) {
-		frames.push_back(release_frames[i]);
+		float percent = (float)i / (release_frames.size() - 1);
+		float volume_release = volume_envelope - (volume_envelope * percent);
+#if envelope_log
+		std::cout << "release percent: " << percent * 100
+		          << "% vol: " << volume_release * 100 << "%\n";
+#endif
+		frames.push_back(release_frames[i] * volume_release);
 	};
 
 	/*if (!((frames.size() / sample_rate) <
@@ -331,7 +332,6 @@ std::vector<float> Preset::get_audio(uint8_t note, float seconds,
 	delayBuffer.resize(500, 0);
 	samples.reserve(raw_samples.size());
 	if (decayFactor == 0.0f) {
-		std::cout << "zero: " << decayFactor << "\n";
 		samples = raw_samples;
 	} else {
 		for (uint32_t i = 0; i < raw_samples.size(); i++) {
@@ -650,12 +650,13 @@ std::array<Preset, 128> get_bank(SF2File sf, uint32_t bank_number) {
 			// bank.push_back(preset);
 		}
 	}
-	info_log_file << 54
-	              << "|loop start:" << bank[54].instrument.samples[0].loop_start
-	              << "\n";
-	info_log_file << 54
-	              << "|loop end:" << bank[54].instrument.samples[0].loop_end
-	              << "\n";
+	// info_log_file << 54
+	//               << "|loop start:" <<
+	//               bank[54].instrument.samples[0].loop_start
+	//               << "\n";
+	// info_log_file << 54
+	//               << "|loop end:" << bank[54].instrument.samples[0].loop_end
+	//               << "\n";
 
 	return bank;
 }
@@ -681,18 +682,17 @@ struct Controller {
 };
 
 struct Track {
+	std::string name;
 	int preset;
 	std::vector<std::variant<Note, Controller>> events;
 };
-
-#define PRINT_MIDI_INFO 1
 
 void process_midi_event(Track &track, uint32_t absolute_time,
                         float ms_per_midiclock, MIDI_MIDI_EVENT midi) {
 	uint8_t type = (0xF0 & midi.type) >> 4;
 	uint8_t channel = 0x0F & midi.type;
 	if (channel != 0) {
-		exit(9999);
+		// exit(9999);
 	}
 	switch (type) {
 	case 0x8: {
@@ -753,7 +753,9 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 					return;
 				}
 			}
+#if PRINT_MIDI_INFO
 			std::cout << "note on not found\n";
+#endif
 		}
 	} break;
 	case 0xB: {
@@ -776,7 +778,58 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 		std::cout << "type: 0x" << std::hex << std::uppercase
 		          << (uint32_t)midi.type << std::dec << std::nouppercase
 		          << "\n";
-		exit(999);
+		// exit(999);
+	}
+}
+
+void write_envelopes_to_csvs(std::array<Preset, 128> bank) {
+	for (uint32_t i = 0; i < bank.size(); i++) {
+		Preset preset = bank[i];
+		for (uint32_t j = 0; j < preset.instrument.samples.size(); j++) {
+			Sample sample_source = preset.instrument.samples[j];
+			uint32_t smm = 1000;
+			std::vector<float> samples;
+			samples.resize(smm * 50, 1.0f);
+			uint32_t loop_end = samples.size() - 10;
+			Sample sample = {
+			    .samples = samples,
+			    .loop_start = 10,
+			    .loop_end = loop_end,
+			    .sample_rate = smm, //(uint32_t)floor(smm * 1.4),
+			    .original_key = 60,
+			    .low_key = 0,
+			    .high_key = 127,
+			    .attackVolTime = sample_source.attackVolTime, // 1000,
+			    .holdVolTime = sample_source.holdVolTime,     // 0.00000602385,
+			    .decayVolTime = sample_source.decayVolTime,
+			    .sustainVol = sample_source.sustainVol,
+			    .releaseVolTime = sample_source.releaseVolTime,
+			    .samplemodes = sample_source.samplemodes,
+			};
+			std::vector<Sample> sm;
+			sm.push_back(sample);
+			Instrument inst = {
+			    .name = "t",
+			    .samples = sm,
+			};
+
+			std::vector<float> env_samples =
+			    inst.get_audio(sample_source.low_key, 10, smm, 1.0f);
+
+			std::stringstream ss;
+			ss << "./output/envelope/waveform_envelope";
+			ss << i << ".." << j;
+			ss << ".csv";
+			std::cout << ss.str() << "\n";
+
+			std::ofstream waveform1(ss.str());
+			waveform1 << "x,y\n";
+			for (uint32_t i = 0; i < env_samples.size(); i++) {
+				float sample = env_samples[i];
+				waveform1 << i << "," << sample << "\n";
+			}
+			waveform1.close();
+		}
 	}
 }
 
@@ -784,14 +837,54 @@ int main(int argc, char **argv) {
 	float sample_rate;
 	float sample_rate_default = 48000.0;
 
-	SF2File sf2_file("./MUS_LAST_BOSS.sf2");
+	Pa_Initialize();
+	int device = -1;
+	int track_index = -1;
+	std::string sf_file_name = "MUS_LAST_BOSS.sf2";
+	std::string mid_file_name = "MUS_LAST_BOSS.mid";
+
+	// std::cout << "argument count: " << argc << "\n";
+	for (int i = 1; i < argc; i++) {
+		// std::cout << i << ": |" << argv[i] << "|\n";
+		if (strcmp(argv[i], "-c") == 0) {
+			if (argc > i + 1) {
+				i++;
+				device = atoi(argv[i]);
+				std::cout << "device: " << device << "\n";
+			}
+		} else if (strcmp(argv[i], "-d") == 0) {
+			device = Pa_GetDefaultOutputDevice();
+			std::cout << "device: " << device << "\n";
+		} else if (strcmp(argv[i], "-t") == 0) {
+			if (argc > i + 1) {
+				i++;
+				track_index = atoi(argv[i]);
+				std::cout << "track_index: " << track_index << "\n";
+			}
+		} else if (strcmp(argv[i], "-M") == 0) {
+			if (argc > i + 1) {
+				i++;
+				mid_file_name = argv[i];
+				std::cout << "midi file: " << mid_file_name << "\n";
+			}
+		} else if (strcmp(argv[i], "-S") == 0) {
+			if (argc > i + 1) {
+				i++;
+				sf_file_name = argv[i];
+				std::cout << "sf2 file: " << sf_file_name << "\n";
+			}
+		}
+	}
+
+	SF2File sf2_file(sf_file_name);
 	sf_sample sample_header = sf2_file.sample_headers[40];
 	std::array bank = get_bank(sf2_file, 0);
 
 	MIDI_FILE midi_file;
 	std::optional<MIDI_FILE> midi_file_opt =
-	    read_midi_file("./MUS_LAST_BOSS.mid");
+	    read_midi_file(mid_file_name.c_str());
 	// read_midi_file("./test2.mid");
+	// return 0;
 
 	if (!midi_file_opt.has_value()) {
 		std::cout << "couldn't read midi file: \"" << "./MUS_LAST_BOSS.mid"
@@ -814,8 +907,10 @@ int main(int argc, char **argv) {
 			if (std::holds_alternative<MIDI_SYSEX_EVENT>(event.event)) {
 				MIDI_SYSEX_EVENT sysex =
 				    std::get<MIDI_SYSEX_EVENT>(event.event);
+#if PRINT_MIDI_INFO
 				std::cout << "SYSEX\n";
 				std::cout << "data: 0x" << std::hex;
+#endif
 				for (int index = 0; index < sysex.data.size(); index++) {
 					std::cout << (uint32_t)sysex.data[index];
 				}
@@ -840,13 +935,16 @@ int main(int argc, char **argv) {
 				if (meta.type == 0x3) {
 					std::vector<uint8_t> data = meta.data;
 					data.push_back(0);
-					// std::cout << "text: " << data.data() << "\n";
+					track.name = std::string(data.begin(), data.end());
+					std::cout << "text: " << data.data() << "\n";
 				}
 				if (meta.type == 0x51) {
 					uint32_t time = meta.data[0];
 					time = time << 8 | meta.data[1];
 					time = time << 8 | meta.data[2];
+#if PRINT_MIDI_INFO
 					std::cout << "time: " << time << "\n";
+#endif
 					us_per_midiclock = (float)time;
 				}
 			}
@@ -859,34 +957,10 @@ int main(int argc, char **argv) {
 	}
 
 	// return 0;
-	Pa_Initialize();
 	PaStream *stream;
 	PaStreamParameters outputParameters;
 
 	float seconds = 40;
-
-	int device = -1;
-	int track_index = -1;
-
-	// std::cout << "argument count: " << argc << "\n";
-	for (int i = 1; i < argc; i++) {
-		// std::cout << i << ": |" << argv[i] << "|\n";
-		if (strcmp(argv[i], "-c") == 0) {
-			if (argc > i + 1) {
-				i++;
-				device = atoi(argv[i]);
-				std::cout << "device: " << device << "\n";
-			}
-		} else if (strcmp(argv[i], "-d") == 0) {
-			device = Pa_GetDefaultOutputDevice();
-		} else if (strcmp(argv[i], "-t") == 0) {
-			if (argc > i + 1) {
-				i++;
-				track_index = atoi(argv[i]);
-				std::cout << "track_index: " << track_index << "\n";
-			}
-		}
-	}
 
 	if (device == -1) {
 		for (int i = 0; i < Pa_GetDeviceCount(); i++) {
@@ -936,29 +1010,38 @@ int main(int argc, char **argv) {
 		track_max = track_index + 1;
 	}
 #if 1
+	int32_t events_count = 0;
+	for (uint32_t i = track_min; i < track_max; i++) {
+		for (uint32_t j = 0; j < tracks[i].events.size(); j++) {
+			events_count += 1;
+		}
+	}
+	uint32_t events_done = 0;
 	for (uint32_t i = track_min; i < track_max; i++) {
 		Preset preset = bank[tracks[i].preset];
 		Instrument instrument = preset.instrument;
 		float expression = 1.0f;
 		// std::reverse(tracks[i].notes.begin(), tracks[i].notes.end());
 		for (uint32_t j = 0; j < tracks[i].events.size(); j++) {
-			std::cout << i + 1 << "/" << tracks.size() << "| " << j + 1 << "/"
-			          << tracks[i].events.size() << "\n";
+			std::cout << events_done + 1 << "/" << events_count << "\n";
+			// std::cout << i + 1 << "/" << tracks.size() << "| " << j + 1 <<
+			// "/"
+			//           << tracks[i].events.size() << "\n";
 			if (std::holds_alternative<Note>(tracks[i].events[j])) {
 				Note note = std::get<Note>(tracks[i].events[j]);
 				float volume = expression * (note.velocity / 127.0f);
 				float start_sec = note.start_ticks * mult;
 				int start_index = std::round(sample_rate * start_sec);
 				float duration_sec = note.duration_ticks * mult;
-				std::cout << "sec: " << start_sec << " dur: " << duration_sec
-				          << "\n";
+				// std::cout << "sec: " << start_sec << " dur: " << duration_sec
+				//          << "\n";
 				std::vector<float> samples = preset.get_audio(
 				    note.midi_note, duration_sec, sample_rate, volume);
 				uint32_t max_index = samples.size() - 1 + start_index;
 				if (max_index >= samples_to_play.size()) {
 					samples_to_play.resize(max_index + 1);
 				}
-				std::cout << samples.size() << "\n";
+				// std::cout << samples.size() << "\n";
 				for (uint32_t index = 0; index < samples.size(); index++) {
 					float original_sample =
 					    samples_to_play[start_index + index];
@@ -972,15 +1055,45 @@ int main(int argc, char **argv) {
 				    std::get<Controller>(tracks[i].events[j]);
 				if (controller.type == Controller_type::Expression) {
 					expression = controller.amount / 127.0f;
-					std::cout << "val: " << (uint32_t)controller.amount
-					          << ", express: " << std::fixed
-					          << std::setprecision(10)
-					          << (uint32_t)(expression * 100) << "\n";
+					// std::cout << "val: " << (uint32_t)controller.amount
+					//           << ", express: " << std::fixed
+					//           << std::setprecision(10)
+					//           << (uint32_t)(expression * 100) << "\n";
 				}
 			}
+			events_done += 1;
 		}
 	}
+	uint32_t zeros = 0;
+	bool nonzero_found = false;
+	if (samples_to_play.size() == 0) {
+		std::cout << "empty\n";
+		exit(1000);
+	}
+
+	for (uint32_t i = samples_to_play.size() - 1; i >= 0 && !nonzero_found;
+	     i--) {
+		if (samples_to_play[i] == 0) {
+			zeros += 1;
+		} else {
+			nonzero_found = true;
+		}
+	}
+	samples_to_play.erase(samples_to_play.end() - zeros, samples_to_play.end());
+
+	// zeros = 0;
+	// nonzero_found = false;
+	// for (uint32_t i = 0; i >= samples_to_play.size() && !nonzero_found; i++)
+	// { 	if (samples_to_play[i] == 0) { 		zeros += 1; 	} else {
+	// nonzero_found =
+	// true;
+	//	}
+	// }
+	// samples_to_play.erase(samples_to_play.begin(),
+	//                       samples_to_play.begin() + zeros);
 #else
+	write_envelopes_to_csvs(bank);
+	return 0;
 	Preset preset = bank[track_index];
 	int note = 60;
 	int sec = 20;
@@ -1008,12 +1121,12 @@ int main(int argc, char **argv) {
 		exit(9999);
 	}
 
-	uint32_t smm = 1000;
+	uint32_t smm = 48000; // 1000;
 	std::vector<float> samples;
 	samples.resize(smm * 50, 1.0f);
 	Sample sample = {
 	    .samples = samples,
-	    .sample_rate = smm,
+	    .sample_rate = 22025, //(uint32_t)floor(smm * 1.4),
 	    .original_key = 60,
 	    .low_key = 0,
 	    .high_key = 127,
@@ -1049,7 +1162,7 @@ int main(int argc, char **argv) {
 	outputParameters.suggestedLatency =
 	    Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
 	outputParameters.hostApiSpecificStreamInfo = NULL;
-#if 1
+#if 0
 	std::ofstream waveform2("./output/waveform_audio.csv");
 	std::ofstream waveform3("./output/waveform_audio.bin", std::ios::binary);
 
@@ -1072,7 +1185,8 @@ int main(int argc, char **argv) {
 	}
 	std::cout << length << "\n"
 	          << midi_file.header.division.ticks_per_quarter_note << "\n";
-	// return 0;
+	// std::cout << tracks[track_index].name << "\n";
+	//  return 0;
 	std::cout << "start\n";
 	std::cin.get();
 
@@ -1095,11 +1209,11 @@ int main(int argc, char **argv) {
 		for (uint32_t i = 0; i < (samples_to_play.size() / sample_rate) * 10;
 		     i++) {
 			float seconds = (i + 1) / 10.0;
+			Pa_Sleep(100);
 			std::cout << std::fixed << std::setprecision(1)
 			          << "current: " << seconds << "/"
 			          << (samples_to_play.size() / sample_rate) << "\n"
 			          << std::defaultfloat;
-			Pa_Sleep(100);
 		}
 		// Pa_Sleep(length * 1000);
 		std::cout << "done\n";
