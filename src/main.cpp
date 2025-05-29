@@ -62,8 +62,8 @@ std::vector<float> resampleAudio(const std::vector<float> &input,
                                  int channels) {
 	double resampleFactor = targetRate / sourceRate;
 	int newLength =
-	    static_cast<int>((input.size() / (float)channels) * resampleFactor) *
-	    channels;
+		static_cast<int>((input.size() / (float)channels) * resampleFactor) *
+		channels;
 	std::vector<float> output(newLength);
 
 	// Process each channel separately
@@ -116,8 +116,8 @@ class Instrument {
 	friend Instrument get_instrument(SF2File, int);
 	friend struct Preset;
 
-  private:
-  public:
+private:
+public:
 	std::string name;
 	std::vector<Sample> samples;
 	std::vector<float> get_audio(uint8_t note, float seconds, float sample_rate,
@@ -156,7 +156,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 	float new_sample_rate = sample.sample_rate / newfreq * origfreq;
 
 	uint32_t frames_needed =
-	    sample.sample_rate * seconds * (newfreq / origfreq);
+		sample.sample_rate * seconds * (newfreq / origfreq);
 	uint32_t frames_needed_release = sample.sample_rate *
 	                                 (sample.releaseVolTime / 1000) *
 	                                 (newfreq / origfreq);
@@ -210,26 +210,26 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 #if envelope_log
 			std::cout << time_ms << " ";
 			std::cout << sample.attackVolTime
-			          << " attack| vol: " << volume_envelope * 100 << "%\n";
+					  << " attack| vol: " << volume_envelope * 100 << "%\n";
 #endif
 		} else if (time_ms < sample.attackVolTime + sample.holdVolTime) {
 			volume_envelope = 1.0f;
 #if envelope_log
 			std::cout << time_ms << " ";
 			std::cout << sample.attackVolTime + sample.holdVolTime
-			          << " hold| vol: " << volume_envelope * 100 << "%\n";
+					  << " hold| vol: " << volume_envelope * 100 << "%\n";
 #endif
 		} else if (time_ms < sample.attackVolTime + sample.holdVolTime +
 		                         sample.decayVolTime) {
 			float percentage =
-			    (time_ms - sample.attackVolTime - sample.holdVolTime) /
-			    sample.decayVolTime;
+				(time_ms - sample.attackVolTime - sample.holdVolTime) /
+				sample.decayVolTime;
 			volume_envelope = 1 - ((1.0f - sample.sustainVol) * percentage);
 #if envelope_log
 			std::cout << time_ms << " ";
 			std::cout << sample.attackVolTime + sample.holdVolTime +
-			                 sample.decayVolTime
-			          << " decay| percent: " << volume_envelope * 100 << "%\n";
+							 sample.decayVolTime
+					  << " decay| percent: " << volume_envelope * 100 << "%\n";
 #endif
 		}
 		frames[i] *= volume_envelope;     // left
@@ -301,7 +301,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 		float volume_release = volume_envelope * powf(1.0f - percent, 2.0f);
 #if envelope_log
 		std::cout << "release percent: " << percent * 100
-		          << "% vol: " << volume_release * 100 << "%\n";
+				  << "% vol: " << volume_release * 100 << "%\n";
 #endif
 		frames.push_back(release_frames[i] * volume_release);     // left
 		frames.push_back(release_frames[i + 1] * volume_release); // right
@@ -328,7 +328,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 std::vector<float> Preset::get_audio(uint8_t note, float seconds,
                                      float sample_rate, float volume) {
 	std::vector<float> raw_samples =
-	    instrument.get_audio(note, seconds, sample_rate, volume);
+		instrument.get_audio(note, seconds, sample_rate, volume);
 	std::vector<float> delayBuffer_left;
 	std::vector<float> delayBuffer_right;
 	std::vector<float> samples;
@@ -382,33 +382,33 @@ Instrument get_instrument(SF2File sf, int index) {
 	sf_inst sf_instrument = sf.instrument_names_indices[index];
 	Instrument instrument;
 	uint32_t instrument_zone_amount =
-	    sf.instrument_names_indices[index + 1].inst_bag_ndx -
-	    sf_instrument.inst_bag_ndx;
+		sf.instrument_names_indices[index + 1].inst_bag_ndx -
+		sf_instrument.inst_bag_ndx;
 
 	instrument.name = sf_instrument.inst_name;
 
 	info_log_file << "instrument        |" << sf_instrument.inst_name << "\n";
 	info_log_file << "instrument bag ndx|" << sf_instrument.inst_bag_ndx
-	              << "\n";
+				  << "\n";
 	info_log_file << "instrument bag cnd|" << instrument_zone_amount << "\n";
 
 	for (int i = 0; i < instrument_zone_amount; i++) {
 		sf_inst_bag instrument_bag_min =
-		    sf.instument_index_list[sf_instrument.inst_bag_ndx + i];
+			sf.instument_index_list[sf_instrument.inst_bag_ndx + i];
 		sf_inst_bag instrument_bag_max_ex =
-		    sf.instument_index_list[sf_instrument.inst_bag_ndx + i + 1];
+			sf.instument_index_list[sf_instrument.inst_bag_ndx + i + 1];
 		info_log_file << "instrument mod idx|"
-		              << instrument_bag_min.inst_mod_ndx << " "
-		              << instrument_bag_max_ex.inst_mod_ndx -
-		                     instrument_bag_min.inst_mod_ndx
-		              << " " << instrument_bag_min.inst_mod_ndx << "-"
-		              << instrument_bag_max_ex.inst_mod_ndx << "\n";
+					  << instrument_bag_min.inst_mod_ndx << " "
+					  << instrument_bag_max_ex.inst_mod_ndx -
+							 instrument_bag_min.inst_mod_ndx
+					  << " " << instrument_bag_min.inst_mod_ndx << "-"
+					  << instrument_bag_max_ex.inst_mod_ndx << "\n";
 		info_log_file << "instrument gen idx|"
-		              << instrument_bag_min.inst_gen_ndx << " "
-		              << instrument_bag_max_ex.inst_gen_ndx -
-		                     instrument_bag_min.inst_gen_ndx
-		              << " " << instrument_bag_min.inst_gen_ndx << "-"
-		              << instrument_bag_max_ex.inst_gen_ndx << "\n";
+					  << instrument_bag_min.inst_gen_ndx << " "
+					  << instrument_bag_max_ex.inst_gen_ndx -
+							 instrument_bag_min.inst_gen_ndx
+					  << " " << instrument_bag_min.inst_gen_ndx << "-"
+					  << instrument_bag_max_ex.inst_gen_ndx << "\n";
 
 		bool end = false;
 		uint32_t sample_number;
@@ -421,7 +421,7 @@ Instrument get_instrument(SF2File sf, int index) {
 			case sf_generator::keyRange: {
 				sf_ranges_type keys = generator.amount.ranges;
 				info_log_file << "key range: " << (uint32_t)keys.low << "-"
-				              << (uint32_t)keys.high << "\n";
+							  << (uint32_t)keys.high << "\n";
 				sample.low_key = keys.low;
 				sample.high_key = keys.high;
 				break;
@@ -429,93 +429,93 @@ Instrument get_instrument(SF2File sf, int index) {
 			case sf_generator::velRange: {
 				sf_ranges_type vels = generator.amount.ranges;
 				info_log_file << "velocity range: " << (uint32_t)vels.low << "-"
-				              << (uint32_t)vels.high << "\n";
+							  << (uint32_t)vels.high << "\n";
 				break;
 			}
 			case sf_generator::initialAttenuation: {
 				info_log_file << "initial Attenuation: "
-				              << generator.amount.sh_amount / 10 << "dB\n";
+							  << generator.amount.sh_amount / 10 << "dB\n";
 				break;
 			}
 			case sf_generator::pan: {
 				info_log_file << "pan: " << generator.amount.sh_amount / 10
-				              << "%\n";
+							  << "%\n";
 				sample.pan = generator.amount.sh_amount / 1000;
 				break;
 			}
 			case sf_generator::sampleModes: {
 				info_log_file << "samplemodes: " << generator.amount.w_amount
-				              << "\n";
+							  << "\n";
 				sample.samplemodes = generator.amount.w_amount;
 				break;
 			}
 			case sf_generator::overridingRootKey: {
 				info_log_file
-				    << "overridingRootKey: " << generator.amount.sh_amount
-				    << "\n";
+					<< "overridingRootKey: " << generator.amount.sh_amount
+					<< "\n";
 				key = generator.amount.sh_amount;
 				break;
 			}
 			case sf_generator::attackVolEnv: {
 				info_log_file
-				    << "attackVolEnv: "
-				    << pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
-				           1000.0f
-				    << " ms|orig: " << generator.amount.sh_amount << "\n";
+					<< "attackVolEnv: "
+					<< pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
+						   1000.0f
+					<< " ms|orig: " << generator.amount.sh_amount << "\n";
 				sample.attackVolTime =
-				    pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
+					pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
 
 				break;
 			}
 			case sf_generator::holdVolEnv: {
 				info_log_file
-				    << "holdVolEnv: "
-				    << pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
-				           1000.0f
-				    << " ms|orig: " << generator.amount.sh_amount << "\n";
+					<< "holdVolEnv: "
+					<< pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
+						   1000.0f
+					<< " ms|orig: " << generator.amount.sh_amount << "\n";
 				sample.holdVolTime =
-				    pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
+					pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
 				break;
 			}
 			case sf_generator::decayVolEnv: {
 				info_log_file
-				    << "decayVolEnv: "
-				    << pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
-				           1000.0f
-				    << " ms|orig: " << generator.amount.sh_amount << "\n";
+					<< "decayVolEnv: "
+					<< pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
+						   1000.0f
+					<< " ms|orig: " << generator.amount.sh_amount << "\n";
 				sample.decayVolTime =
-				    pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
+					pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
 				break;
 			}
 			case sf_generator::sustainVolEnv: {
 				info_log_file
-				    << "sustainVolEnv: "
-				    << std::pow(10.0f, (-generator.amount.sh_amount / 200.0f))
-				    << "f|orig: " << generator.amount.sh_amount << "\n";
+					<< "sustainVolEnv: "
+					<< std::pow(10.0f, (-generator.amount.sh_amount / 200.0f))
+					<< "f|orig: " << generator.amount.sh_amount << "\n";
 				sample.sustainVol = std::pow(
-				    10.0f, ((-generator.amount.sh_amount / 10.0f) / 20.0f));
+					10.0f, ((-generator.amount.sh_amount / 10.0f) / 20.0f));
 				break;
 			}
 			case sf_generator::releaseVolEnv: {
 				info_log_file
-				    << "releaseVolEnv: "
-				    << pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
-				           1000.0f
-				    << " ms|orig: " << generator.amount.sh_amount << "\n";
+					<< "releaseVolEnv: "
+					<< pow(2.0f, (generator.amount.sh_amount / 1200.0f)) *
+						   1000.0f
+					<< " ms|orig: " << generator.amount.sh_amount << "\n";
 				sample.releaseVolTime =
-				    pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
+					pow(2.0f, (generator.amount.sh_amount / 1200.0f)) * 1000;
 				break;
 			}
 			case sf_generator::sampleID: {
 				info_log_file << "sampleID: " << generator.amount.w_amount
-				              << "\n";
+							  << "\n";
 				sample_number = generator.amount.w_amount;
 				end = true;
 				break;
 			}
 			default:
 				std::cout << "generator: \"" << generator.oper
-				          << "\" is not supported\n";
+						  << "\" is not supported\n";
 				exit(1);
 				break;
 			}
@@ -543,7 +543,7 @@ Preset getPreset(SF2File sf, uint32_t index) {
 	Preset preset;
 	sf_preset_header header = sf.preset_headers[index];
 	uint32_t bag_amount =
-	    sf.preset_headers[index + 1].perset_bag_ndx - header.perset_bag_ndx;
+		sf.preset_headers[index + 1].perset_bag_ndx - header.perset_bag_ndx;
 
 	if (header.preset == 0) {
 		std::cout << "couldn't find preset of index: " << index << "\n";
@@ -559,23 +559,23 @@ Preset getPreset(SF2File sf, uint32_t index) {
 	info_log_file << "bag amount        |" << bag_amount << "\n";
 	if (bag_amount != 1) {
 		std::cout << "the preset has more or less then one bag. this program "
-		             "does not "
-		             "support more than one\n";
+					 "does not "
+					 "support more than one\n";
 		exit(1);
 	}
 	sf_preset_bag preset_indices_min =
-	    sf.preset_index_list[header.perset_bag_ndx];
+		sf.preset_index_list[header.perset_bag_ndx];
 	sf_preset_bag preset_indices_max_ex =
-	    sf.preset_index_list[header.perset_bag_ndx + 1];
+		sf.preset_index_list[header.perset_bag_ndx + 1];
 	info_log_file << "modulators        |"
-	              << preset_indices_max_ex.ModNdx - preset_indices_min.ModNdx
-	              << " " << preset_indices_min.ModNdx << "-"
-	              << preset_indices_max_ex.ModNdx << "\n";
+				  << preset_indices_max_ex.ModNdx - preset_indices_min.ModNdx
+				  << " " << preset_indices_min.ModNdx << "-"
+				  << preset_indices_max_ex.ModNdx << "\n";
 
 	info_log_file << "generators        |"
-	              << preset_indices_max_ex.GenNdx - preset_indices_min.GenNdx
-	              << " " << preset_indices_min.GenNdx << "-"
-	              << preset_indices_max_ex.GenNdx << "\n";
+				  << preset_indices_max_ex.GenNdx - preset_indices_min.GenNdx
+				  << " " << preset_indices_min.GenNdx << "-"
+				  << preset_indices_max_ex.GenNdx << "\n";
 
 	if ((preset_indices_max_ex.ModNdx - preset_indices_min.ModNdx) != 0) {
 		std::cout << "this program doesn't support modulators\n";
@@ -600,7 +600,7 @@ Preset getPreset(SF2File sf, uint32_t index) {
 		}
 		default:
 			std::cout << "generator: \"" << generator.oper
-			          << "\" is not supported\n";
+					  << "\" is not supported\n";
 			exit(999);
 			break;
 		}
@@ -609,19 +609,19 @@ Preset getPreset(SF2File sf, uint32_t index) {
 	Instrument instrument = get_instrument(sf, instrument_number);
 	for (int i = 0; i < instrument.samples.size(); i++) {
 		info_log_file << i << "|loop start:" << instrument.samples[i].loop_start
-		              << "\n";
+					  << "\n";
 		info_log_file << i << "|loop end:" << instrument.samples[i].loop_end
-		              << "\n";
+					  << "\n";
 		info_log_file << i
-		              << "|sample rate:" << instrument.samples[i].sample_rate
-		              << "\n";
+					  << "|sample rate:" << instrument.samples[i].sample_rate
+					  << "\n";
 		info_log_file << i << "|original key:"
-		              << (uint32_t)instrument.samples[i].original_key << "\n";
+					  << (uint32_t)instrument.samples[i].original_key << "\n";
 		info_log_file << i << "|high key:"
-		              << (uint32_t)instrument.samples[i].high_key << "\n";
+					  << (uint32_t)instrument.samples[i].high_key << "\n";
 		info_log_file << i
-		              << "|low key:" << (uint32_t)instrument.samples[i].low_key
-		              << "\n";
+					  << "|low key:" << (uint32_t)instrument.samples[i].low_key
+					  << "\n";
 	}
 
 	preset.instrument = instrument;
@@ -674,7 +674,7 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 	uint8_t channel = 0x0F & midi.type;
 	if (channel != 0) {
 		std::cout
-		    << "this program expects only midi channel \"0\" to be used\n";
+			<< "this program expects only midi channel \"0\" to be used\n";
 		exit(-1);
 	}
 	switch (type) {
@@ -683,8 +683,8 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 		uint8_t velocity = midi.data[1];
 #if PRINT_MIDI_INFO
 		std::cout << "off note: " << (uint32_t)key
-		          << " vel: " << (uint32_t)velocity
-		          << " timestamp: " << absolute_time << "\n";
+				  << " vel: " << (uint32_t)velocity
+				  << " timestamp: " << absolute_time << "\n";
 #endif
 		for (int32_t i = track.events.size() - 1; i >= 0; i--) {
 			if (!std::holds_alternative<Note>(track.events[i])) {
@@ -695,7 +695,7 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 				note.duration = absolute_time - note.start;
 #if PRINT_MIDI_INFO
 				std::cout << "note: " << (uint32_t)note.midi_note
-				          << " duration: " << note.duration_ticks << "\n";
+						  << " duration: " << note.duration_ticks << "\n";
 #endif
 				track.events[i] = note;
 				return;
@@ -708,8 +708,8 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 		uint8_t velocity = midi.data[1];
 #if PRINT_MIDI_INFO
 		std::cout << "on note: " << (uint32_t)key
-		          << " vel: " << (uint32_t)velocity
-		          << " timestamp: " << absolute_time << "\n";
+				  << " vel: " << (uint32_t)velocity
+				  << " timestamp: " << absolute_time << "\n";
 #endif
 		if (velocity != 0) {
 			Note note = {.start = absolute_time,
@@ -727,7 +727,7 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 					note.duration = absolute_time - note.start;
 #if PRINT_MIDI_INFO
 					std::cout << "note: " << (uint32_t)note.midi_note
-					          << " duration: " << note.duration_ticks << "\n";
+							  << " duration: " << note.duration_ticks << "\n";
 #endif
 					track.events[i] = note;
 					return;
@@ -745,7 +745,7 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 #if PRINT_MIDI_INFO
 		std::cout << "control change:\n";
 		std::cout << "type: " << (uint32_t)controller.type
-		          << ", amount: " << (uint32_t)controller.amount << "\n";
+				  << ", amount: " << (uint32_t)controller.amount << "\n";
 #endif
 		track.events.push_back(controller);
 	} break;
@@ -757,8 +757,8 @@ void process_midi_event(Track &track, uint32_t absolute_time,
 	} break;
 	default:
 		std::cerr << "type: 0x" << std::hex << std::uppercase
-		          << (uint32_t)midi.type << std::dec << std::nouppercase
-		          << "\n";
+				  << (uint32_t)midi.type << std::dec << std::nouppercase
+				  << "\n";
 	}
 }
 
@@ -772,29 +772,29 @@ void write_envelopes_to_csvs(std::array<Preset, 128> bank) {
 			samples.resize(smm * 50, 1.0f);
 			uint32_t loop_end = samples.size() - 10;
 			Sample sample = {
-			    .samples = samples,
-			    .loop_start = 10,
-			    .loop_end = loop_end,
-			    .sample_rate = smm,
-			    .original_key = 60,
-			    .low_key = 0,
-			    .high_key = 127,
-			    .attackVolTime = sample_source.attackVolTime,
-			    .holdVolTime = sample_source.holdVolTime,
-			    .decayVolTime = sample_source.decayVolTime,
-			    .sustainVol = sample_source.sustainVol,
-			    .releaseVolTime = sample_source.releaseVolTime,
-			    .samplemodes = sample_source.samplemodes,
+				.samples = samples,
+				.loop_start = 10,
+				.loop_end = loop_end,
+				.sample_rate = smm,
+				.original_key = 60,
+				.low_key = 0,
+				.high_key = 127,
+				.attackVolTime = sample_source.attackVolTime,
+				.holdVolTime = sample_source.holdVolTime,
+				.decayVolTime = sample_source.decayVolTime,
+				.sustainVol = sample_source.sustainVol,
+				.releaseVolTime = sample_source.releaseVolTime,
+				.samplemodes = sample_source.samplemodes,
 			};
 			std::vector<Sample> sm;
 			sm.push_back(sample);
 			Instrument inst = {
-			    .name = "t",
-			    .samples = sm,
+				.name = "t",
+				.samples = sm,
 			};
 
 			std::vector<float> env_samples =
-			    inst.get_audio(sample_source.low_key, 10, smm, 1.0f);
+				inst.get_audio(sample_source.low_key, 10, smm, 1.0f);
 
 			std::stringstream string_stream_left;
 			string_stream_left << "./output/envelope/waveform_envelope";
@@ -878,11 +878,11 @@ int main(int argc, char **argv) {
 	*/
 	MIDI_FILE midi_file;
 	std::optional<MIDI_FILE> midi_file_opt =
-	    read_midi_file(mid_file_name.c_str());
+		read_midi_file(mid_file_name.c_str());
 
 	if (!midi_file_opt.has_value()) {
 		std::cout << "couldn't read midi file: \"" << "./MUS_LAST_BOSS.mid"
-		          << "\"\n";
+				  << "\"\n";
 		exit(1);
 	}
 
@@ -900,7 +900,7 @@ int main(int argc, char **argv) {
 			absolute_time += event.delta_time;
 			if (std::holds_alternative<MIDI_SYSEX_EVENT>(event.event)) {
 				MIDI_SYSEX_EVENT sysex =
-				    std::get<MIDI_SYSEX_EVENT>(event.event);
+					std::get<MIDI_SYSEX_EVENT>(event.event);
 #if PRINT_MIDI_INFO
 				std::cout << "SYSEX\n";
 				std::cout << "data: 0x" << std::hex;
@@ -963,7 +963,7 @@ int main(int argc, char **argv) {
 			}
 			const PaHostApiInfo *hInfo = Pa_GetHostApiInfo(pInfo->hostApi);
 			std::cout << i << ": " << pInfo->name << ", hostApi:" << hInfo->name
-			          << "\n";
+					  << "\n";
 		}
 		std::cout << "pick audio device: ";
 		std::cin >> device;
@@ -1025,7 +1025,7 @@ int main(int argc, char **argv) {
 				// std::cout << "sec: " << start_sec << " dur: " << duration_sec
 				//          << "\n";
 				std::vector<float> samples = preset.get_audio(
-				    note.midi_note, duration_sec, sample_rate, volume);
+					note.midi_note, duration_sec, sample_rate, volume);
 				uint32_t max_index = samples.size() - 1 + start_index;
 				if (max_index >= track_samples.size()) {
 					track_samples.resize(max_index + 1);
@@ -1033,20 +1033,20 @@ int main(int argc, char **argv) {
 				for (uint32_t index = 0; index < samples.size(); index += 2) {
 					if (pan == 0) {
 						track_samples[start_index + index] +=
-						    samples[index] * volume; // left
+							samples[index] * volume; // left
 						track_samples[start_index + index + 1] +=
-						    samples[index + 1] * volume; // right
+							samples[index + 1] * volume; // right
 					} else {
 						track_samples[start_index + index] +=
-						    samples[index] * volume * (0.5 - pan); // left
+							samples[index] * volume * (0.5 - pan); // left
 						track_samples[start_index + index + 1] +=
-						    samples[index + 1] * volume * (0.5 + pan); // right
+							samples[index + 1] * volume * (0.5 + pan); // right
 					}
 				}
 			} else if (std::holds_alternative<Controller>(
-			               tracks[i].events[j])) {
+						   tracks[i].events[j])) {
 				Controller controller =
-				    std::get<Controller>(tracks[i].events[j]);
+					std::get<Controller>(tracks[i].events[j]);
 				if (controller.type == Controller_type::Expression) {
 					float prev_expression = expression;
 					expression = controller.amount / 127.0f;
@@ -1057,7 +1057,7 @@ int main(int argc, char **argv) {
 						     index < track_samples.size(); index++) {
 
 							track_samples[index] *=
-							    expression / prev_expression;
+								expression / prev_expression;
 						}
 					}
 					// std::cout << "val: " << (uint32_t)controller.amount
@@ -1078,9 +1078,9 @@ int main(int argc, char **argv) {
 							for (uint32_t index = start_index;
 							     index + 1 < track_samples.size(); index += 2) {
 								track_samples[index] *=
-								    (0.5 - pan) / (0.5 - prev_pan);
+									(0.5 - pan) / (0.5 - prev_pan);
 								track_samples[index + 1] *=
-								    (0.5 + pan) / (0.5 + prev_pan);
+									(0.5 + pan) / (0.5 + prev_pan);
 							}
 						}
 					} else {
@@ -1099,7 +1099,7 @@ int main(int argc, char **argv) {
 			events_done += 1;
 		}
 		float max_sample =
-		    *std::max_element(track_samples.begin(), track_samples.end());
+			*std::max_element(track_samples.begin(), track_samples.end());
 		if (max_sample > 1.0f) {
 			for (auto &sample : track_samples) {
 				sample /= max_sample;
@@ -1152,14 +1152,14 @@ int main(int argc, char **argv) {
 	std::cout << "song size: " << samples_to_play.size() << "\n";
 	if (samples_to_play.size() != 0) {
 		std::cout << "middle sample: "
-		          << samples_to_play[(samples_to_play.size() - 1) / 2] << "\n";
+				  << samples_to_play[(samples_to_play.size() - 1) / 2] << "\n";
 	}
 
 	Sample sample_source;
 	bool found_source;
 	for (Sample sample : preset.instrument.samples) {
 		std::cout << (uint32_t)sample.low_key << " <= " << note
-		          << " <= " << (uint32_t)sample.high_key << "\n";
+				  << " <= " << (uint32_t)sample.high_key << "\n";
 		if (sample.low_key <= note && note <= sample.high_key) {
 			sample_source = sample;
 			found_source = true;
@@ -1176,23 +1176,23 @@ int main(int argc, char **argv) {
 	std::vector<float> samples;
 	samples.resize(smm * 50, 1.0f);
 	Sample sample = {
-	    .samples = samples,
-	    .sample_rate = 22025, //(uint32_t)floor(smm * 1.4),
-	    .original_key = 60,
-	    .low_key = 0,
-	    .high_key = 127,
-	    .attackVolTime = sample_source.attackVolTime,
-	    .holdVolTime = sample_source.holdVolTime,
-	    .decayVolTime = sample_source.decayVolTime,
-	    .sustainVol = sample_source.sustainVol,
-	    .releaseVolTime = sample_source.releaseVolTime,
-	    .samplemodes = sample_source.samplemodes,
+		.samples = samples,
+		.sample_rate = 22025, //(uint32_t)floor(smm * 1.4),
+		.original_key = 60,
+		.low_key = 0,
+		.high_key = 127,
+		.attackVolTime = sample_source.attackVolTime,
+		.holdVolTime = sample_source.holdVolTime,
+		.decayVolTime = sample_source.decayVolTime,
+		.sustainVol = sample_source.sustainVol,
+		.releaseVolTime = sample_source.releaseVolTime,
+		.samplemodes = sample_source.samplemodes,
 	};
 	std::vector<Sample> sm;
 	sm.push_back(sample);
 	Instrument inst = {
-	    .name = "t",
-	    .samples = sm,
+		.name = "t",
+		.samples = sm,
 	};
 
 	std::vector<float> env_samples = inst.get_audio(note, sec, smm, 1.0f);
@@ -1208,9 +1208,9 @@ int main(int argc, char **argv) {
 
 	outputParameters.channelCount = 2; /* stereo output */
 	outputParameters.sampleFormat =
-	    paFloat32; /* 32 bit floating point output */
+		paFloat32; /* 32 bit floating point output */
 	outputParameters.suggestedLatency =
-	    Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+		Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
 	outputParameters.hostApiSpecificStreamInfo = NULL;
 #if 0
 	std::ofstream waveform2("./output/waveform_audio.csv");
@@ -1227,21 +1227,21 @@ int main(int argc, char **argv) {
 #endif
 
 	float max_sample =
-	    *std::max_element(samples_to_play.begin(), samples_to_play.end());
+		*std::max_element(samples_to_play.begin(), samples_to_play.end());
 	if (max_sample > 1.0f) {
 		for (auto &sample : samples_to_play) {
 			sample /= max_sample;
 		}
 	}
 	std::cout << length << "\n"
-	          << midi_file.header.division.ticks_per_quarter_note << "\n";
+			  << midi_file.header.division.ticks_per_quarter_note << "\n";
 	std::cout << "length: " << (float)samples_to_play.size() / 2 / sample_rate
-	          << "s\n";
+			  << "s\n";
 	std::cout << "start\n";
 	std::cin.get();
 
 	PaError err =
-	    Pa_OpenStream(&stream, NULL, /* no input */
+		Pa_OpenStream(&stream, NULL, /* no input */
 	                  &outputParameters, sample_rate, 0,
 	                  paClipOff | paDitherOff, /* we won't output out of range
 	                                samples so don't bother clipping them */
@@ -1262,9 +1262,9 @@ int main(int argc, char **argv) {
 			float seconds = (i + 1) / 10.0;
 			Pa_Sleep(100);
 			std::cout << std::fixed << std::setprecision(1)
-			          << "current: " << seconds << "/"
-			          << ((samples_to_play.size() / 2.0f) / sample_rate) << "\n"
-			          << std::defaultfloat;
+					  << "current: " << seconds << "/"
+					  << ((samples_to_play.size() / 2.0f) / sample_rate) << "\n"
+					  << std::defaultfloat;
 		}
 		std::cout << "done\n";
 		Pa_StopStream(stream);
