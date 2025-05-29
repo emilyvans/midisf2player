@@ -193,11 +193,14 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 			}
 		}
 	}
+	frames = resampleAudio(frames, sample.sample_rate,
+	                       sample_rate / newfreq * origfreq, 2);
 
-	frames = resampleAudio(frames, sample.sample_rate, new_sample_rate, 2);
+	/*frames = resampleAudio(frames, sample.sample_rate, new_sample_rate, 2);
 
-	frames = resampleAudio(frames, sample.sample_rate, sample_rate, 2);
+	frames = resampleAudio(frames, sample.sample_rate, sample_rate, 2);*/
 
+#ifndef dis_env
 	float volume_envelope = sample.sustainVol;
 	for (uint32_t i = 0; i < frames.size(); i += 2) {
 		float time_ms = ((i / 2) / sample_rate) * 1000.0f;
@@ -279,16 +282,23 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 		}
 	}
 
-	release_frames =
+	release_frames = resampleAudio(release_frames, sample.sample_rate,
+	                               sample_rate / newfreq * origfreq, 2);
+
+	/*release_frames =
 	    resampleAudio(release_frames, sample.sample_rate, new_sample_rate, 2);
 
 	release_frames =
-	    resampleAudio(release_frames, sample.sample_rate, sample_rate, 2);
-
+	    resampleAudio(release_frames, sample.sample_rate, sample_rate, 2);*/
 	frames.reserve(release_frames.size());
 	for (uint32_t i = 0; i < release_frames.size(); i += 2) {
-		float percent = (float)(i / 2.0f) / (release_frames.size() / 2.0f);
-		float volume_release = volume_envelope - (volume_envelope * percent);
+		float time_ms = ((i / 2.0f) / sample_rate) * 1000.0f;
+		float percent = time_ms / sample.releaseVolTime;
+		if (percent > 100.0f) {
+			percent = 100.0f;
+		}
+		// float percent = (float)(i / 2.0f) / (release_frames.size() / 2.0f);
+		float volume_release = volume_envelope * powf(1.0f - percent, 2.0f);
 #if envelope_log
 		std::cout << "release percent: " << percent * 100
 		          << "% vol: " << volume_release * 100 << "%\n";
@@ -296,6 +306,7 @@ std::vector<float> Instrument::get_audio(uint8_t note, float seconds,
 		frames.push_back(release_frames[i] * volume_release);     // left
 		frames.push_back(release_frames[i + 1] * volume_release); // right
 	};
+#endif
 
 	/*if (!((frames.size() / sample_rate) <
 	          (seconds + sample.releaseVolTime / 1000) + 0.01 &&
@@ -1229,11 +1240,12 @@ int main(int argc, char **argv) {
 	std::cout << "start\n";
 	std::cin.get();
 
-	PaError err = Pa_OpenStream(&stream, NULL, /* no input */
-	                            &outputParameters, sample_rate, 0,
-	                            0, /* we won't output out of range samples
-	                                          so don't bother clipping them */
-	                            paCallback, nullptr);
+	PaError err =
+	    Pa_OpenStream(&stream, NULL, /* no input */
+	                  &outputParameters, sample_rate, 0,
+	                  paClipOff | paDitherOff, /* we won't output out of range
+	                                samples so don't bother clipping them */
+	                  paCallback, nullptr);
 
 	if (err != paNoError) {
 		Pa_CloseStream(stream);
