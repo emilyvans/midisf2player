@@ -6,5 +6,5 @@ compile_commands.json
 /out/build/x64-Debug
 midi.json
 web midi test
-./MUS_LAST_BOSS.sf2
-./sfspec24.pdf
+MUS_LAST_BOSS.sf2
+sfspec24.pdf
